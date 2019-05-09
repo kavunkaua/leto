@@ -88,4 +88,15 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 	}
 	c.Check(i, Equals, len(testdata))
 
+	//test if we can clear the uuid data when saving to disk (no need
+	//to save a lot of unucessary data)
+	testdata[len(testdata)-1].ProducerUuid = "foobar"
+	b = proto.NewBuffer(nil)
+	b.EncodeMessage(testdata[len(testdata)-1])
+	sizeWithUuid := len(b.Bytes())
+	testdata[len(testdata)-1].ProducerUuid = ""
+	b = proto.NewBuffer(nil)
+	b.EncodeMessage(testdata[len(testdata)-1])
+	sizeWithoutUuid := len(b.Bytes())
+	c.Check((sizeWithUuid-sizeWithoutUuid) > len("foobar"), Equals, true)
 }
