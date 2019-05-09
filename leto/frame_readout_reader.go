@@ -62,6 +62,7 @@ func (r *FrameReadoutReader) ReadAll(C chan<- *hermes.FrameReadout, E chan<- err
 			return
 		}
 		m := &hermes.FrameReadout{}
+
 		err = proto.Unmarshal(data, m)
 		if err != nil {
 			E <- err
