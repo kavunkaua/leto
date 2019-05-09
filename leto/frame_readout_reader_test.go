@@ -2,13 +2,14 @@ package main
 
 import (
 	"bytes"
+	"math"
+	"math/rand"
 	"testing"
 
 	"github.com/formicidae-tracker/hermes"
 	. "gopkg.in/check.v1"
 
 	"github.com/golang/protobuf/proto"
-	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -24,18 +25,29 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 			Timestamp:    0,
 			FrameID:      0,
 			Ants:         nil,
-			Time:         &google_protobuf.Timestamp{},
+			Time:         nil,
 			Error:        hermes.FrameReadout_NO_ERROR,
 			ProducerUuid: "foo",
 		},
 		&hermes.FrameReadout{
-			Timestamp:    10000,
-			FrameID:      1,
+			Timestamp:    100000,
+			FrameID:      42,
 			Ants:         nil,
-			Time:         &google_protobuf.Timestamp{},
+			Time:         nil,
 			Error:        hermes.FrameReadout_PROCESS_OVERFLOW,
 			ProducerUuid: "foo",
 		},
+	}
+
+	for i := 0; i < 1000; i++ {
+		a := &hermes.Ant{
+			ID:    uint32(rand.Intn(20000)),
+			X:     rand.Float64() * 1000.0,
+			Y:     rand.Float64() * 1000.0,
+			Theta: rand.Float64() * 2.0 * math.Pi,
+		}
+
+		testdata[0].Ants = append(testdata[0].Ants, a)
 	}
 
 	b := proto.NewBuffer(nil)
