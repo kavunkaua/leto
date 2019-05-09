@@ -7,21 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type FrameReadoutReader struct {
-	stream io.ReadCloser
-}
-
-func NewFrameReadoutReader(s io.ReadCloser) *FrameReadoutReader {
-	return &FrameReadoutReader{
-		stream: s,
-	}
-}
-
-func (r *FrameReadoutReader) Close() error {
-	return r.stream.Close()
-}
-
-func (r *FrameReadoutReader) ReadAll(C chan<- *hermes.FrameReadout, E chan<- error) {
+func FrameReadoutReadAll(stream io.Reader, C chan<- *hermes.FrameReadout, E chan<- error) {
 	defer func() {
 		close(C)
 		close(E)
@@ -31,7 +17,7 @@ func (r *FrameReadoutReader) ReadAll(C chan<- *hermes.FrameReadout, E chan<- err
 	for {
 		idx := 0
 		for ; idx < len(dataSize); idx++ {
-			n, err := r.stream.Read(dataSize[idx:(idx + 1)])
+			n, err := stream.Read(dataSize[idx:(idx + 1)])
 			if err != nil {
 				if err != io.EOF {
 					E <- err
@@ -54,7 +40,7 @@ func (r *FrameReadoutReader) ReadAll(C chan<- *hermes.FrameReadout, E chan<- err
 			continue
 		}
 		data := make([]byte, size)
-		_, err := io.ReadFull(r.stream, data)
+		_, err := io.ReadFull(stream, data)
 		if err != nil {
 			if err != io.EOF {
 				E <- err
