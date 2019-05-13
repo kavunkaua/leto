@@ -93,6 +93,7 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 	}
 
 	nextFrameToSend := int64(0)
+	maxFrame := int64(-1)
 	deadlines := map[int]time.Time{}
 	//we reserve a large value, but with tiemout we should have no relocation
 	buffer := make(ReadoutBuffer, 10*wb.Stride, 0)
@@ -113,6 +114,10 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 			if ok == false {
 				return nil
 			}
+			if i.FrameID > maxFrame {
+				maxFrame = i.FrameID
+			}
+
 			fid, err := wb.CheckFrame(i)
 			if err != nil {
 				logger.Printf("%s", err)
@@ -143,7 +148,11 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 			timer.Stop()
 		}
 		// we complete the buffer with timeouted values
-		for i := nextFrameToSend; i < nextFrameToSend+int64(wb.Stride); i++ {
+		end := nextFrameToSend + int64(wb.Stride) - 1
+		if maxFrame > end {
+			end = maxFrame
+		}
+		for i := nextFrameToSend; i < end; i++ {
 			mI := wb.FrameID(i)
 			if now.After(deadlines[mI]) == true {
 				nowPb, _ := ptypes.TimestampProto(now)
