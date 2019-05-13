@@ -67,10 +67,7 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 	for {
 		select {
 		case m, ok := <-C:
-			if ok == false {
-				C = nil
-				break
-			}
+			c.Assert(ok, Equals, true)
 			c.Assert(i < len(testdata), Equals, true)
 			c.Check(m, DeepEquals, testdata[i])
 			i += 1
@@ -82,10 +79,11 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 			c.Check(err, IsNil)
 
 		}
-		if E == nil && C == nil {
+		if E == nil {
 			break
 		}
 	}
+	close(C)
 	c.Check(i, Equals, len(testdata))
 
 	//test if we can clear the uuid data when saving to disk (no need

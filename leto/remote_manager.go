@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -19,22 +20,36 @@ func NewRemoteManager() *RemoteManager {
 	return &RemoteManager{}
 }
 
-func (m *RemoteManager) Stop() {
+func (m *RemoteManager) Close() error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.quit != nil {
 		close(m.quit)
 	}
+	var res error
 	if m.listener != nil {
-		m.listener.Close()
+		if err := m.listener.Close(); err != nil {
+			if res != nil {
+				res = fmt.Errorf("%s;%s", res, err)
+			} else {
+				res = err
+			}
+		}
 	}
 	for i, c := range m.connections {
 		if c == nil {
 			continue
 		}
-		c.Close()
+		if err := c.Close(); err != nil {
+			if res != nil {
+				res = fmt.Errorf("%s;%s", res, err)
+			} else {
+				res = err
+			}
+		}
 		m.connections[i] = nil
 	}
+	return res
 }
 
 func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameReadout) {
