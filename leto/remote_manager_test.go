@@ -41,7 +41,7 @@ func (s *RemoteManagerSuite) TestManager(c *C) {
 		}()
 	}
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(70 * time.Millisecond)
 	m.mx.Lock()
 	c.Check(len(m.connections), Equals, 3)
 	m.mx.Unlock()
@@ -51,5 +51,7 @@ func (s *RemoteManagerSuite) TestManager(c *C) {
 	for _, conn := range m.connections {
 		c.Check(conn, IsNil)
 	}
+	_, ok := <-readouts
+	c.Check(ok, Equals, false)
 
 }

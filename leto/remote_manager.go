@@ -52,31 +52,44 @@ func (m *RemoteManager) Close() error {
 	return res
 }
 
-func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameReadout) {
-	wg := sync.WaitGroup{}
-
-	defer func() {
-		wg.Wait()
-		close(readouts)
-	}()
+func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameReadout) error {
 
 	m.mx.Lock()
+	if m.listener != nil {
+		m.mx.Unlock()
+		return fmt.Errorf("Already started, wait for former to close properly the output channel")
+	}
 	var err error
 	m.listener, err = net.Listen("tcp", address)
 	if err != nil {
 		m.mx.Unlock()
 		m.listener = nil
-		return
+		return err
 	}
 	m.quit = make(chan struct{})
 	m.mx.Unlock()
+
+	wg := sync.WaitGroup{}
+
+	defer func() {
+		wg.Wait()
+		m.mx.Lock()
+		defer func() {
+			m.mx.Unlock()
+			close(readouts)
+		}()
+
+		m.connections = nil
+		m.listener = nil
+		m.quit = nil
+	}()
 
 	for {
 		conn, err := m.listener.Accept()
 		if err != nil {
 			select {
 			case <-m.quit:
-				return
+				return nil
 			default:
 				log.Printf("accept: %s", err)
 				continue
