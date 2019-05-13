@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 	"sync"
 
@@ -40,15 +41,15 @@ func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameRead
 	wg := sync.WaitGroup{}
 
 	defer func() {
-		wg.Wait
+		wg.Wait()
 		close(readouts)
 	}()
 
 	m.mx.Lock()
 	var err error
-	m.listener, err := net.Listen("tcp",address)
+	m.listener, err = net.Listen("tcp", address)
 	if err != nil {
-		m.nx.Unlock()
+		m.mx.Unlock()
 		m.listener = nil
 		return
 	}
@@ -59,10 +60,10 @@ func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameRead
 		conn, err := m.listener.Accept()
 		if err != nil {
 			select {
-				case <- m.quit:
+			case <-m.quit:
 				return
 			default:
-				log.Printf("accept: %s",err)
+				log.Printf("accept: %s", err)
 				continue
 			}
 		}
@@ -71,9 +72,9 @@ func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameRead
 		errors := make(chan error)
 		go func(remote string) {
 			for e := range errors {
-				log.Printf("[remote/%s]: %s",remote,err)
+				log.Printf("[remote/%s]: %s", remote, e)
 			}
-		}(conn.RemoteAddr())
+		}(conn.RemoteAddr().String())
 		wg.Add(1)
 
 		m.connections = append(m.connections, conn)
@@ -85,7 +86,7 @@ func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameRead
 				m.connections[idx] = nil
 			}
 			wg.Done()
-		}(len(m.connections)-1)
+		}(len(m.connections) - 1)
 		m.mx.Unlock()
 	}
 
