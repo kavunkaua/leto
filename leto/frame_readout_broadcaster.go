@@ -9,9 +9,10 @@ import (
 
 	"github.com/formicidae-tracker/hermes"
 	"github.com/golang/protobuf/proto"
+	"github.com/grandcat/zeroconf"
 )
 
-func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout) {
+func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout) error {
 	m := NewRemoteManager()
 
 	mx := sync.RWMutex{}
@@ -35,8 +36,17 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout)
 		}
 	}()
 	i := 0
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	srv, err := zeroconf.Register(fmt.Sprintf("artemis.%s", hostname), "_artemis._tcp", "local.", 4001, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer srv.Shutdown()
 	log.Printf("Broadcasting on %s", address)
-	m.Listen(address, func(c net.Conn) {
+	return m.Listen(address, func(c net.Conn) {
 		defer c.Close()
 		logger := log.New(os.Stderr, fmt.Sprintf("[broadcast/%s]", c.RemoteAddr().String()), log.LstdFlags)
 

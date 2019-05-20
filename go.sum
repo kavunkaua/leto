@@ -1,3 +1,4 @@
+github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/formicidae-tracker/hermes v0.0.0-20190520115452-627c0b74c5d6 h1:85zYm4iNtCmNgh6/nsPwr7Ofkj4jgEe+d+vdgW45GBw=
 github.com/formicidae-tracker/hermes v0.0.0-20190520115452-627c0b74c5d6/go.mod h1:7DBqYw37jAvSxbpJCMvHXOc26Y4fVBc/adD5U20DjUw=
 github.com/formicidae-tracker/hermes v0.1.3 h1:jRBpLfKCaGsO3wHMctfNbskPa62LQuAZ2IkqxSZUEUQ=
@@ -8,7 +9,15 @@ github.com/formicidae-tracker/hermes v0.1.5 h1:6UN/VFhalEG6H+7xlsZN1z+DXZDQok8lZ
 github.com/formicidae-tracker/hermes v0.1.5/go.mod h1:7DBqYw37jAvSxbpJCMvHXOc26Y4fVBc/adD5U20DjUw=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/grandcat/zeroconf v0.0.0-20190424104450-85eadb44205c/go.mod h1:YjKB0WsLXlMkO9p+wGTCoPIDGRJH0mz7E526PxkQVxI=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/miekg/dns v1.1.10 h1:oN9gL93BkuPrer2rehDbDx86k4zbYJEnMP6Krh82nh0=
+github.com/miekg/dns v1.1.10/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
+golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+golang.org/x/net v0.0.0-20190514140710-3ec191127204 h1:4yG6GqBtw9C+UrLp6s2wtSniayy/Vd/3F7ffLE427XI=
+golang.org/x/net v0.0.0-20190514140710-3ec191127204/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
+golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
