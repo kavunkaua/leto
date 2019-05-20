@@ -37,6 +37,11 @@ func (l *Leto) StopTracking(args *leto.TrackingStop, resp *leto.Response) error 
 	return nil
 }
 
+func (l *Leto) Status(args *leto.Status, resp *leto.Status) error {
+	resp.Running, resp.ExperimentName, resp.Since = l.artemis.Status()
+	return nil
+}
+
 func Execute() error {
 	host, err := os.Hostname()
 	if err != nil {
@@ -53,7 +58,7 @@ func Execute() error {
 	rpcRouter.Register(l)
 	rpcRouter.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 	rpcServer := http.Server{
-		Addr:    fmt.Sprintf(":%d", LETO_PORT),
+		Addr:    fmt.Sprintf(":%d", leto.LETO_PORT),
 		Handler: rpcRouter,
 	}
 
@@ -73,7 +78,7 @@ func Execute() error {
 	}
 
 	go func() {
-		server, err := zeroconf.Register("leto."+host, "_leto._tcp", "local.", LETO_PORT, nil, nil)
+		server, err := zeroconf.Register("leto."+host, "_leto._tcp", "local.", leto.LETO_PORT, nil, nil)
 		if err != nil {
 			log.Printf("[avahi] register error: %s", err)
 			return

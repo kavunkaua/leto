@@ -30,6 +30,9 @@ type ArtemisManager struct {
 	frameBuffer   *bytes.Buffer
 	experimentDir string
 	logger        *log.Logger
+
+	experimentName string
+	since          time.Time
 }
 
 func NewArtemisManager() (*ArtemisManager, error) {
@@ -50,6 +53,15 @@ func NewArtemisManager() (*ArtemisManager, error) {
 		isMaster: true,
 		logger:   log.New(os.Stderr, "[artemis]", log.LstdFlags),
 	}, nil
+}
+
+func (m *ArtemisManager) Status() (bool, string, time.Time) {
+	m.mx.Lock()
+	defer m.mx.Unlock()
+	if m.incoming == nil {
+		return false, "", time.Time{}
+	}
+	return true, m.experimentName, m.since
 }
 
 func (m *ArtemisManager) ExperimentDir(expname string) (string, error) {
@@ -124,7 +136,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	}()
 	m.wg.Add(1)
 	go func() {
-		err := m.trackers.Listen(fmt.Sprintf(":%d", ARTEMIS_IN_PORT), ArtemisOnAccept(m.incoming), func() {
+		err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), ArtemisOnAccept(m.incoming), func() {
 			close(m.incoming)
 			m.mx.Lock()
 			defer m.mx.Unlock()
@@ -135,7 +147,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	}()
 	m.wg.Add(1)
 	go func() {
-		BroadcastFrameReadout(fmt.Sprintf(":%d", ARTEMIS_OUT_PORT), m.broadcast)
+		BroadcastFrameReadout(fmt.Sprintf(":%d", leto.ARTEMIS_OUT_PORT), m.broadcast)
 		m.wg.Done()
 	}()
 	m.wg.Add(1)
@@ -143,7 +155,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		m.fileWriter.WriteAll(m.file)
 		m.wg.Done()
 	}()
-	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", ARTEMIS_IN_PORT, "foo", config.Camera, config.Tag)
+	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Tag)
 	if m.isMaster == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
 		err = os.MkdirAll(dirname, 0644)
@@ -159,6 +171,8 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		m.artemisCmd.Stdout = nil
 	}
 	m.logger.Printf("Starting tracking")
+	m.experimentName = config.ExperimentName
+	m.since = time.Now()
 	m.artemisCmd.Start()
 	return nil
 }

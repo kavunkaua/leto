@@ -9,7 +9,6 @@ import (
 
 	"github.com/formicidae-tracker/hermes"
 	"github.com/golang/protobuf/proto"
-	"github.com/grandcat/zeroconf"
 )
 
 func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout) error {
@@ -37,15 +36,15 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout)
 		}
 	}()
 	i := 0
-	hostname, err := os.Hostname()
-	if err != nil {
-		return err
-	}
-	srv, err := zeroconf.Register(fmt.Sprintf("artemis.%s", hostname), "_artemis._tcp", "local.", 4001, nil, nil)
-	if err != nil {
-		return err
-	}
-	defer srv.Shutdown()
+	// hostname, err := os.Hostname()
+	// if err != nil {
+	// 	return err
+	// }
+	// srv, err := zeroconf.Register(fmt.Sprintf("artemis.%s", hostname), "_artemis._tcp", "local.", 4001, nil, nil)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer srv.Shutdown()
 
 	logger.Printf("Broadcasting on %s", address)
 	return m.Listen(address, func(c net.Conn) {
