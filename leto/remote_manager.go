@@ -5,8 +5,6 @@ import (
 	"log"
 	"net"
 	"sync"
-
-	"github.com/formicidae-tracker/hermes"
 )
 
 type RemoteManager struct {
@@ -52,7 +50,7 @@ func (m *RemoteManager) Close() error {
 	return res
 }
 
-func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameReadout) error {
+func (m *RemoteManager) Listen(address string, onAccept func(net.Conn), onClose func()) error {
 
 	m.mx.Lock()
 	if m.listener != nil {
@@ -76,7 +74,7 @@ func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameRead
 		m.mx.Lock()
 		defer func() {
 			m.mx.Unlock()
-			close(readouts)
+			onClose()
 		}()
 
 		m.connections = nil
@@ -97,17 +95,11 @@ func (m *RemoteManager) Listen(address string, readouts chan<- *hermes.FrameRead
 		}
 
 		m.mx.Lock()
-		errors := make(chan error)
-		go func(remote string) {
-			for e := range errors {
-				log.Printf("[remote/%s]: %s", remote, e)
-			}
-		}(conn.RemoteAddr().String())
 		wg.Add(1)
 
 		m.connections = append(m.connections, conn)
 		go func(idx int) {
-			FrameReadoutReadAll(conn, readouts, errors)
+			onAccept(conn)
 			m.mx.Lock()
 			defer m.mx.Unlock()
 			if m.connections[idx] != nil {

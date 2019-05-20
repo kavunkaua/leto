@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -20,7 +23,20 @@ func (s *RemoteManagerSuite) TestManager(c *C) {
 
 	m := NewRemoteManager()
 
-	go m.Listen(":12345", readouts)
+	go m.Listen(":12345",
+		func(c net.Conn) {
+			errors := make(chan error)
+			logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s]", c.RemoteAddr().String()), log.LstdFlags)
+			go func() {
+				for e := range errors {
+					logger.Printf("%s", e)
+				}
+			}()
+			FrameReadoutReadAll(c, readouts, errors)
+		},
+		func() {
+			close(readouts)
+		})
 	go func() {
 		conn, err := net.Dial("tcp", "localhost:12345")
 		c.Assert(err, IsNil)
