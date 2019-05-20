@@ -29,6 +29,7 @@ type ArtemisManager struct {
 	artemisCmd    *exec.Cmd
 	frameBuffer   *bytes.Buffer
 	experimentDir string
+	logger        *log.Logger
 }
 
 func NewArtemisManager() (*ArtemisManager, error) {
@@ -47,6 +48,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 
 	return &ArtemisManager{
 		isMaster: true,
+		logger:   log.New(os.Stderr, "[artemis]", log.LstdFlags),
 	}, nil
 }
 
@@ -128,7 +130,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 			defer m.mx.Unlock()
 			m.incoming = nil
 		})
-		log.Printf("[artemis/manager]: %s", err)
+		m.logger.Printf("%s", err)
 		m.wg.Done()
 	}()
 	m.wg.Add(1)
@@ -156,7 +158,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	} else {
 		m.artemisCmd.Stdout = nil
 	}
-
+	m.logger.Printf("Starting tracking")
 	m.artemisCmd.Start()
 	return nil
 }
@@ -259,18 +261,18 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 		m.wgEncode.Done()
 	}()
 
-	logger := log.New(os.Stderr, "[artemis-manager]", log.LstdFlags)
 	header := make([]byte, 3*8)
 	host, err := os.Hostname()
 	if err != nil {
-		logger.Printf("%s", err)
+		m.logger.Printf("%s", err)
 		return
 	}
 	currentFrame := 0
 	defer func() {
 	}()
 
-	nextFile := time.Now().Add(2 * time.Hour)
+	period := 2 * time.Hour
+	nextFile := time.Now().Add(period)
 
 	for {
 		//test if we need to quit
@@ -282,7 +284,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 
 		_, err := io.ReadFull(m.frameBuffer, header)
 		if err != nil {
-			logger.Printf("%s", err)
+			m.logger.Printf("%s", err)
 		}
 		actual := binary.LittleEndian.Uint64(header)
 		width := binary.LittleEndian.Uint64(header[8:])
@@ -291,13 +293,14 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 			mName, _, err := FilenameWithoutOverwrite(basenameMovie)
 			cfName, _, err := FilenameWithoutOverwrite(basenameFrame)
 			if err != nil {
-				logger.Printf("%s", err)
+				m.logger.Printf("%s", err)
 				return
 			}
 			f, err = os.Create(cfName)
 			if err != nil {
-				logger.Printf("%s", err)
+				m.logger.Printf("%s", err)
 			}
+
 			cbr := fmt.Sprintf("%dk", bitrate)
 			res := fmt.Sprintf("%dx%d", width, height)
 			quality := "ultrafast"
@@ -337,16 +340,20 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 			}
 			streamCmd.Stdout = encodedWriter
 			streamCmd.Stdin = encodedReader
+			m.logger.Printf("Starting streaming")
+			encodeCmd.Start()
+			streamCmd.Start()
 		}
 
 		fmt.Fprintf(f, "%d %d\n", currentFrame, actual)
 		_, err = io.CopyN(rawWriter, m.frameBuffer, int64(3*width*height))
 		if err != nil {
-			logger.Printf("%s", err)
+			m.logger.Printf("%s", err)
 		}
 		now := time.Now()
 		if now.After(nextFile) == true {
-			nextFile = now.Add(2 * time.Hour)
+			m.logger.Printf("Resetting streaming after %s", period)
+			nextFile = now.Add(period)
 			//we stop streaming
 			streamCmd.Process.Signal(os.Interrupt)
 			encodeCmd.Process.Signal(os.Interrupt)
