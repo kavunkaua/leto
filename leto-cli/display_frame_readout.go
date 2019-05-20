@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/formicidae-tracker/hermes"
 	"github.com/formicidae-tracker/leto"
@@ -16,6 +16,26 @@ type DisplayFrameReadoutCommand struct {
 }
 
 var displayFrameReadoutCommand = &DisplayFrameReadoutCommand{}
+
+type FrameReadoutDisplayer struct {
+	Errors  int
+	Frames  int
+	AntsIDs map[uint32]bool
+}
+
+func (d *FrameReadoutDisplayer) DisplayFrameReadout(h *hermes.FrameReadout) string {
+	d.Frames += 1
+	currentAnts := len(h.Ants)
+	if h.Error != hermes.FrameReadout_NO_ERROR {
+		d.Errors += 1
+	} else {
+		for _, a := range h.Ants {
+			d.AntsIDs[a.ID] = true
+		}
+	}
+
+	return fmt.Sprintf("%s %06d %06d %04d/%04d   ", time.Now().Format("15:04:05"), d.Frames, d.Errors, currentAnts, len(d.AntsIDs))
+}
 
 func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 	resp := &leto.Status{}
@@ -50,6 +70,9 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 		conn.Close()
 	}()
 
+	d := FrameReadoutDisplayer{}
+
+	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Ants\n\n")
 	for {
 		m := &hermes.FrameReadout{}
 		ok, err := leto.ReadDelimitedMessage(conn, m)
@@ -57,7 +80,7 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 			return err
 		}
 		if ok == true {
-			log.Printf("%+v", m)
+			fmt.Fprintf(os.Stdout, "\033[A%s\n", d.DisplayFrameReadout(m))
 		}
 	}
 
@@ -65,6 +88,6 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 }
 
 func init() {
-	parser.AddCommand("display-frame-readout", "display current frame readout", "Displays frame readout information on the command line ", displayFrameReadoutCommand)
+	parser.AddCommand("display-frame-readout", "display current frame readout", "Displays frame readout information on the standard output", displayFrameReadoutCommand)
 
 }
