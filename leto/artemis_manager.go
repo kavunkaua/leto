@@ -31,10 +31,23 @@ type ArtemisManager struct {
 	experimentDir string
 }
 
-func NewArtemisManager() *ArtemisManager {
+func NewArtemisManager() (*ArtemisManager, error) {
+	cmd := exec.Command("artemis", "--version")
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("Could not find artemis: %s", err)
+	}
+	//TODO Check version compatibility"
+	//TODO check if slave or master
+	cmd = exec.Command("ffmpeg", "--version")
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("Could not find ffmpeg: %s", err)
+	}
+
 	return &ArtemisManager{
 		isMaster: true,
-	}
+	}, nil
 }
 
 func (m *ArtemisManager) ExperimentDir(expname string) (string, error) {
@@ -158,14 +171,22 @@ func (m *ArtemisManager) Stop() error {
 		close(m.quitEncode)
 	}
 	m.wgEncode.Wait()
+	m.quitEncode = nil
 	m.frameBuffer = nil
 	m.artemisCmd.Process.Signal(os.Interrupt)
 	m.artemisCmd.Wait()
+	m.artemisCmd = nil
+	m.frameBuffer = nil
 	//Stops the reading of frame readout, it will close all the chain
 	if err := m.trackers.Close(); err != nil {
 		return err
 	}
 	m.wg.Wait()
+	m.fileWriter.Close()
+	m.incoming = nil
+	m.merged = nil
+	m.file = nil
+	m.broadcast = nil
 	return nil
 }
 
