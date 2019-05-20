@@ -94,10 +94,10 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 
 	nextFrameToSend := int64(0)
 	maxFrame := int64(-1)
-	deadlines := map[int]time.Time{}
+	deadlines := map[int64]time.Time{}
 	//we reserve a large value, but with tiemout we should have no relocation
-	buffer := make(ReadoutBuffer, 10*wb.Stride, 0)
-	betweenFrame := time.Duration(1.0e9/wb.FPS) * time.Microsecond
+	buffer := make(ReadoutBuffer, 0, 10*wb.Stride)
+	betweenFrame := time.Duration(1.0e9/wb.FPS) * time.Nanosecond
 	timeout := time.Duration(wb.Stride+2) * betweenFrame
 
 	logger := log.New(os.Stderr, "[FrameReadoutMerger]:", log.LstdFlags)
@@ -111,6 +111,9 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 		var now time.Time
 		select {
 		case i, ok := <-inbound:
+			// if ok == true {
+			// 	log.Printf("receiving frame %d", i.FrameID)
+			// }
 			if ok == false {
 				return nil
 			}
@@ -118,7 +121,7 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 				maxFrame = i.FrameID
 			}
 
-			fid, err := wb.CheckFrame(i)
+			_, err := wb.CheckFrame(i)
 			if err != nil {
 				logger.Printf("%s", err)
 				continue
@@ -126,9 +129,8 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 			now = time.Now()
 			if len(deadlines) == 0 {
 				nextFrameToSend = i.FrameID
-				for i := fid; i < fid+wb.Stride; i++ {
-					ii := i % wb.Stride
-					deadlines[ii] = now.Add(time.Duration(i-fid) * betweenFrame).Add(timeout)
+				for i := 0; i < wb.Stride; i++ {
+					deadlines[nextFrameToSend+int64(i)] = now.Add(time.Duration(i) * betweenFrame).Add(timeout)
 				}
 			}
 			if i.FrameID < nextFrameToSend {
@@ -136,8 +138,9 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 				logger.Printf("Received frame %d, but already sent a timeout", i.FrameID)
 				continue
 			}
-
-			deadlines[fid] = now.Add(timeout)
+			delete(deadlines, i.FrameID)
+			deadlines[i.FrameID+int64(wb.Stride)] = now.Add(timeout)
+			//log.Printf("received %d \n\n%+v\n\n", i.FrameID, deadlines)
 			i.ProducerUuid = ""
 			buffer = append(buffer, i)
 
@@ -148,13 +151,14 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 			timer.Stop()
 		}
 		// we complete the buffer with timeouted values
-		end := nextFrameToSend + int64(wb.Stride) - 1
+		end := nextFrameToSend + int64(wb.Stride)
 		if maxFrame > end {
 			end = maxFrame
 		}
 		for i := nextFrameToSend; i < end; i++ {
-			mI := wb.FrameID(i)
-			if now.After(deadlines[mI]) == true {
+			d, ok := deadlines[i]
+			//log.Printf("testing %d now:%s deadline:%s", i, now, d)
+			if ok == true && now.After(d) == true {
 				nowPb, _ := ptypes.TimestampProto(now)
 				logger.Printf("marking frame %d as timeouted", i)
 				buffer = append(buffer, &hermes.FrameReadout{
@@ -162,6 +166,8 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 					FrameID: i,
 					Time:    nowPb,
 				})
+				delete(deadlines, i)
+				deadlines[i+int64(wb.Stride)] = now.Add(timeout)
 			}
 		}
 		//we sort them all
@@ -182,10 +188,10 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 				//we wait for it to arrive or to timeout
 				break
 			}
-
 			buffer[0].ProducerUuid = ""
 			outbound <- buffer[0]
 			buffer = buffer[1:]
+			delete(deadlines, nextFrameToSend)
 			nextFrameToSend++
 		}
 
