@@ -10,6 +10,7 @@ import (
 	"os/signal"
 
 	"github.com/formicidae-tracker/leto"
+	"github.com/grandcat/zeroconf"
 )
 
 type Leto struct {
@@ -37,8 +38,12 @@ func (l *Leto) StopTracking(args *leto.TrackingStop, resp *leto.Response) error 
 }
 
 func Execute() error {
+	host, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
 	l := &Leto{}
-	var err error
 	l.artemis, err = NewArtemisManager()
 	if err != nil {
 		return err
@@ -66,7 +71,21 @@ func Execute() error {
 	if err := rpcServer.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
+
+	go func() {
+		server, err := zeroconf.Register("leto."+host, "_leto._tcp", "local.", LETO_PORT, nil, nil)
+		if err != nil {
+			log.Printf("[avahi] register error: %s", err)
+			return
+		}
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		server.Shutdown()
+	}()
+
 	<-idleConnections
+
 	return nil
 }
 
