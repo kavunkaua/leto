@@ -47,6 +47,7 @@ type TrackingStart struct {
 	ExperimentName      string
 	NewAntOutputROISize int
 	StreamHost          string
+	BitRateKB           int
 	Camera              CameraConfiguration
 	Tag                 TagDetectionConfiguration
 }

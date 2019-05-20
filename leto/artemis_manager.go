@@ -139,7 +139,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		m.artemisCmd.Stdout = m.frameBuffer
 		m.quitEncode = make(chan struct{})
 		m.wgEncode.Add(1)
-		go m.encodeAndStream(config.Camera.FPS, config.StreamHost)
+		go m.encodeAndStream(config.Camera.FPS, config.BitRateKB, config.StreamHost)
 	} else {
 		m.artemisCmd.Stdout = nil
 	}
@@ -204,7 +204,7 @@ func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int
 	return cmd
 }
 
-func (m *ArtemisManager) encodeAndStream(fps float64, streamAddress string) {
+func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress string) {
 	basenameMovie := filepath.Join(m.experimentDir, "stream.mp4")
 	basenameFrame := filepath.Join(m.experimentDir, "stream.frame-matching.txt")
 	var f *os.File
@@ -231,7 +231,6 @@ func (m *ArtemisManager) encodeAndStream(fps float64, streamAddress string) {
 		if encodeCmd != nil {
 			encodeCmd.Wait()
 		}
-
 		rawReader.Close()
 		rawWriter.Close()
 		encodedReader.Close()
@@ -278,7 +277,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, streamAddress string) {
 			if err != nil {
 				logger.Printf("%s", err)
 			}
-			cbr := "2000k"
+			cbr := fmt.Sprintf("%dk", bitrate)
 			res := fmt.Sprintf("%dx%d", width, height)
 			quality := "ultrafast"
 			encodeCmd = exec.Command("ffmpeg",
