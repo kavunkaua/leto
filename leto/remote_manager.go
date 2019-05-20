@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
+
+	"github.com/formicidae-tracker/hermes"
 )
 
 type RemoteManager struct {
@@ -110,4 +113,21 @@ func (m *RemoteManager) Listen(address string, onAccept func(net.Conn), onClose 
 		m.mx.Unlock()
 	}
 
+}
+
+func ArtemisOnAccept(readouts chan<- *hermes.FrameReadout) func(c net.Conn) {
+	return func(c net.Conn) {
+		errors := make(chan error)
+		logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s]", c.RemoteAddr().String()), log.LstdFlags)
+		go func() {
+			for e := range errors {
+				logger.Printf("%s", e)
+			}
+		}()
+		FrameReadoutReadAll(c, readouts, errors)
+	}
+}
+
+func ArtemisOnCloseAll(readouts chan<- *hermes.FrameReadout) func() {
+	return func() { close(readouts) }
 }
