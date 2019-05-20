@@ -139,6 +139,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		m.artemisCmd.Stdout = m.frameBuffer
 		m.quitEncode = make(chan struct{})
 		m.wgEncode.Add(1)
+		go m.encodeAndStream(config.Camera.FPS, config.StreamHost)
 	} else {
 		m.artemisCmd.Stdout = nil
 	}
@@ -153,6 +154,11 @@ func (m *ArtemisManager) Stop() error {
 	if m.incoming == nil {
 		return fmt.Errorf("Already stoppped")
 	}
+	if m.quitEncode != nil {
+		close(m.quitEncode)
+	}
+	m.wgEncode.Wait()
+	m.frameBuffer = nil
 	m.artemisCmd.Process.Signal(os.Interrupt)
 	m.artemisCmd.Wait()
 	//Stops the reading of frame readout, it will close all the chain
@@ -272,27 +278,27 @@ func (m *ArtemisManager) encodeAndStream(fps float64, streamAddress string) {
 			if err != nil {
 				logger.Printf("%s", err)
 			}
-
+			cbr := "2000k"
+			res := fmt.Sprintf("%dx%d", width, height)
+			quality := "ultrafast"
 			encodeCmd = exec.Command("ffmpeg",
 				"-f", "rawvideo",
 				"-vcodec", "rawvideo",
 				"-pixel_format", "rgb24",
-				"-video_size", fmt.Sprintf("%dx%d", width, height),
+				"-video_size", res,
 				"-framerate", fmt.Sprintf("%f", fps),
 				"-i", "-",
 				"-c:v:0", "libx264",
-				"-l", "error",
-				"-tune", "zerolatency",
-				"-x264-params", fmt.Sprintf("force-cfr=1:keyint=%d:scenecut:=0", int(fps)),
-				"-preset", "ultrafast",
-				"-vb", "12000k",
-				"-minrate", "3000k",
-				"-maxrate", "18500k",
-				"-bufsize", "5000k",
-				"-muxrate", "18500k",
-				"-nal-hrd", "cbr",
-				"-pix_fmt", "yuv420p",
-				"-vbsf", "h264_mp4toannexb",
+				"-g", fmt.Sprintf("%d", int(2*fps)),
+				"-keyint_min", fmt.Sprintf("%d", int(fps)),
+				"-b:v", cbr,
+				"-minrate", cbr,
+				"-maxrate", cbr,
+				"-pix_fmt",
+				"yuv420p",
+				"-s", res,
+				"-preset", quality,
+				"-tune", "film",
 				"-f", "flv",
 				"-")
 			encodeCmd.Stderr = nil
