@@ -43,7 +43,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 	}
 	//TODO Check version compatibility"
 	//TODO check if slave or master
-	cmd = exec.Command("ffmpeg", "--version")
+	cmd = exec.Command("ffmpeg", "-version")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("Could not find ffmpeg: %s", err)
