@@ -96,7 +96,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(m.experimentDir, 0644)
+	err = os.MkdirAll(m.experimentDir, 0755)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Tag)
 	if m.isMaster == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
-		err = os.MkdirAll(dirname, 0644)
+		err = os.MkdirAll(dirname, 0755)
 		if err != nil {
 			return err
 		}
