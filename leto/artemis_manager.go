@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -26,8 +25,10 @@ type ArtemisManager struct {
 	trackers                          *RemoteManager
 	isMaster                          bool
 
-	artemisCmd    *exec.Cmd
-	frameBuffer   *bytes.Buffer
+	artemisCmd *exec.Cmd
+	muxReader  *io.PipeReader
+	muxWriter  *io.PipeWriter
+
 	experimentDir string
 	logger        *log.Logger
 
@@ -90,6 +91,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.merged = make(chan *hermes.FrameReadout, 10)
 	m.file = make(chan *hermes.FrameReadout, 200)
 	m.broadcast = make(chan *hermes.FrameReadout, 10)
+	m.muxReader, m.muxWriter = io.Pipe()
 
 	var err error
 	m.experimentDir, err = m.ExperimentDir(config.ExperimentName)
@@ -165,8 +167,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		if err != nil {
 			return err
 		}
-		m.frameBuffer = bytes.NewBuffer(nil)
-		m.artemisCmd.Stdout = m.frameBuffer
+		m.artemisCmd.Stdout = m.muxWriter
 		m.quitEncode = make(chan struct{})
 		m.wgEncode.Add(1)
 		go m.encodeAndStream(config.Camera.FPS, config.BitRateKB, config.StreamHost)
@@ -191,11 +192,13 @@ func (m *ArtemisManager) Stop() error {
 	}
 	m.wgEncode.Wait()
 	m.quitEncode = nil
-	m.frameBuffer = nil
 	m.artemisCmd.Process.Signal(os.Interrupt)
 	m.artemisCmd.Wait()
+	m.muxReader.Close()
+	m.muxWriter.Close()
+	m.muxReader = nil
+	m.muxWriter = nil
 	m.artemisCmd = nil
-	m.frameBuffer = nil
 	//Stops the reading of frame readout, it will close all the chain
 	if err := m.trackers.Close(); err != nil {
 		return err
@@ -299,7 +302,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 		default:
 		}
 
-		_, err := io.ReadFull(m.frameBuffer, header)
+		_, err := io.ReadFull(m.muxReader, header)
 		if err != nil {
 			m.logger.Printf("cannot read header: %s", err)
 		}
@@ -363,7 +366,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 		}
 
 		fmt.Fprintf(f, "%d %d\n", currentFrame, actual)
-		_, err = io.CopyN(rawWriter, m.frameBuffer, int64(3*width*height))
+		_, err = io.CopyN(rawWriter, m.muxReader, int64(3*width*height))
 		if err != nil {
 			m.logger.Printf("cannot copy frame: %s", err)
 		}
