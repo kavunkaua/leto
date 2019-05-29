@@ -72,10 +72,6 @@ func Execute() error {
 		}
 		close(idleConnections)
 	}()
-	logger.Printf("listening on %s", rpcServer.Addr)
-	if err := rpcServer.ListenAndServe(); err != http.ErrServerClosed {
-		return err
-	}
 
 	go func() {
 		server, err := zeroconf.Register("leto."+host, "_leto._tcp", "local.", leto.LETO_PORT, nil, nil)
@@ -88,6 +84,11 @@ func Execute() error {
 		<-sigint
 		server.Shutdown()
 	}()
+
+	logger.Printf("listening on %s", rpcServer.Addr)
+	if err := rpcServer.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
 
 	<-idleConnections
 
