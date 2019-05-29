@@ -51,7 +51,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 	}
 
 	return &ArtemisManager{
-		isMaster: true,
+		isMaster: false,
 		logger:   log.New(os.Stderr, "[artemis]", log.LstdFlags),
 	}, nil
 }
@@ -183,16 +183,21 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 func (m *ArtemisManager) Stop() error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
+
 	if m.incoming == nil {
 		return fmt.Errorf("Already stoppped")
 	}
+
+	m.artemisCmd.Process.Signal(os.Interrupt)
+	m.logger.Printf("Waiting for artemis process to stop")
+	m.artemisCmd.Wait()
+
 	if m.quitEncode != nil {
 		close(m.quitEncode)
 	}
+	m.logger.Printf("Waiting for encoder process to stop")
 	m.wgEncode.Wait()
 	m.quitEncode = nil
-	m.artemisCmd.Process.Signal(os.Interrupt)
-	m.artemisCmd.Wait()
 	m.muxReader.Close()
 	m.muxWriter.Close()
 	m.muxReader = nil
@@ -202,8 +207,11 @@ func (m *ArtemisManager) Stop() error {
 	if err := m.trackers.Close(); err != nil {
 		return err
 	}
+	log.Printf("Waiting for all connection to be closed")
+	m.mx.Unlock()
 	m.wg.Wait()
 	m.fileWriter.Close()
+	m.mx.Lock()
 	m.incoming = nil
 	m.merged = nil
 	m.file = nil
