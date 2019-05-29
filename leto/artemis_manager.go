@@ -51,7 +51,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 	}
 
 	return &ArtemisManager{
-		isMaster: false,
+		isMaster: true,
 		logger:   log.New(os.Stderr, "[artemis]", log.LstdFlags),
 	}, nil
 }
@@ -197,7 +197,7 @@ func (m *ArtemisManager) Stop() error {
 	if m.quitEncode != nil {
 		close(m.quitEncode)
 	}
-	m.logger.Printf("Waiting for encoder process to stop")
+	m.logger.Printf("Waiting for stream tasks to stop")
 	m.wgEncode.Wait()
 	m.quitEncode = nil
 	m.muxReader.Close()
@@ -270,23 +270,26 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 			f.Close()
 		}
 		if streamCmd != nil {
-
 			streamCmd.Process.Signal(os.Interrupt)
-
 		}
 		if encodeCmd != nil {
 			encodeCmd.Process.Signal(os.Interrupt)
 		}
+
 		if streamCmd != nil {
+			log.Printf("Waiting for stream to end")
 			streamCmd.Wait()
 		}
+
 		if encodeCmd != nil {
+			log.Printf("Waiting for encoding to end")
 			encodeCmd.Wait()
 		}
-		rawReader.Close()
-		rawWriter.Close()
 		encodedReader.Close()
 		encodedWriter.Close()
+		rawWriter.Close()
+		rawReader.Close()
+
 		m.wgEncode.Done()
 	}()
 
@@ -370,8 +373,14 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 			streamCmd.Stdout = encodedWriter
 			streamCmd.Stdin = encodedReader
 			m.logger.Printf("Starting streaming")
-			encodeCmd.Start()
-			streamCmd.Start()
+			err = encodeCmd.Start()
+			if err != nil {
+				m.logger.Printf("Could not start encoding process: %s", err)
+			}
+			err = streamCmd.Start()
+			if err != nil {
+				m.logger.Printf("Could not start streaming process: %s", err)
+			}
 		}
 
 		fmt.Fprintf(f, "%d %d\n", currentFrame, actual)
