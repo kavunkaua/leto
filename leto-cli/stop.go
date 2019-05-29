@@ -8,7 +8,7 @@ type StopCommand struct {
 	Instance string `short:"I" long:"instance" decsription:"host to start the tracking" required:"true"`
 }
 
-var stopCommand = &StartCommand{}
+var stopCommand = &StopCommand{}
 
 func (c *StopCommand) Execute([]string) error {
 	resp := &leto.Response{}
