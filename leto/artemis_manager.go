@@ -86,6 +86,8 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		return fmt.Errorf("ArtemisManager: Start: already started")
 	}
 
+	m.logger.Printf("New experiment: %+v", config)
+
 	m.incoming = make(chan *hermes.FrameReadout, 10)
 	m.merged = make(chan *hermes.FrameReadout, 10)
 	m.file = make(chan *hermes.FrameReadout, 200)
@@ -173,7 +175,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	} else {
 		m.artemisCmd.Stdout = nil
 	}
-	m.logger.Printf("Starting tracking")
+	m.logger.Printf("Starting tracking : %#v", m.artemisCmd)
 	m.experimentName = config.ExperimentName
 	m.since = time.Now()
 	m.artemisCmd.Start()

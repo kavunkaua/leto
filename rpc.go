@@ -52,8 +52,8 @@ func NewTagDetectionConfig() TagDetectionConfiguration {
 }
 
 type CameraConfiguration struct {
-	StrobeDuration time.Duration `long:"strobe-delay" description:"delay of the strobe signal" default:"0us"`
-	StrobeDelay    time.Duration `long:"strobe-duration" description:"duration of the strobe signal" default:"1500us"`
+	StrobeDelay    time.Duration `long:"strobe-delay" description:"delay of the strobe signal" default:"0us"`
+	StrobeDuration time.Duration `long:"strobe-duration" description:"duration of the strobe signal" default:"1500us"`
 	FPS            float64       `long:"f" description:"FPS to use for the experiment" default:"8.0"`
 }
 

@@ -24,8 +24,9 @@ func ReadDelimitedMessage(stream io.Reader, pb proto.Message) (bool, error) {
 			break
 		}
 	}
+
 	size, n := proto.DecodeVarint(dataSize[0:idx])
-	if n == 0 {
+	if n == 0 || size == 0 {
 		return false, nil
 	}
 	data := make([]byte, size)
