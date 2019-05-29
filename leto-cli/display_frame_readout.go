@@ -70,7 +70,9 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 		conn.Close()
 	}()
 
-	d := FrameReadoutDisplayer{}
+	d := FrameReadoutDisplayer{
+		AntsIDs: make(map[uint32]bool),
+	}
 
 	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Ants\n\n")
 	for {
