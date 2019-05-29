@@ -15,9 +15,11 @@ import (
 
 type Leto struct {
 	artemis *ArtemisManager
+	logger  *log.Logger
 }
 
 func (l *Leto) StartTracking(args *leto.TrackingStart, resp *leto.Response) error {
+	l.logger.Printf("new start request for experiment '%s'", args.ExperimentName)
 	err := l.artemis.Start(args)
 	if err != nil {
 		resp.Error = err.Error()
@@ -28,6 +30,7 @@ func (l *Leto) StartTracking(args *leto.TrackingStart, resp *leto.Response) erro
 }
 
 func (l *Leto) StopTracking(args *leto.TrackingStop, resp *leto.Response) error {
+	l.logger.Printf("new stop request")
 	err := l.artemis.Stop()
 	if err != nil {
 		resp.Error = err.Error()
@@ -53,7 +56,7 @@ func Execute() error {
 	if err != nil {
 		return err
 	}
-	logger := log.New(os.Stderr, "[rpc]", log.LstdFlags)
+	l.logger = log.New(os.Stderr, "[rpc]", log.LstdFlags)
 	rpcRouter := rpc.NewServer()
 	rpcRouter.Register(l)
 	rpcRouter.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
@@ -68,7 +71,7 @@ func Execute() error {
 		signal.Notify(sigint, os.Interrupt)
 		<-sigint
 		if err := rpcServer.Shutdown(context.Background()); err != nil {
-			logger.Printf("could not shutdown: %s", err)
+			l.logger.Printf("could not shutdown: %s", err)
 		}
 		close(idleConnections)
 	}()
@@ -85,7 +88,7 @@ func Execute() error {
 		server.Shutdown()
 	}()
 
-	logger.Printf("listening on %s", rpcServer.Addr)
+	l.logger.Printf("listening on %s", rpcServer.Addr)
 	if err := rpcServer.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}

@@ -81,11 +81,11 @@ func (*ArtemisManager) UnlinkHostname(address string) error {
 func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
-
 	if m.incoming != nil {
 		m.mx.Unlock()
 		return fmt.Errorf("ArtemisManager: Start: already started")
 	}
+
 	m.incoming = make(chan *hermes.FrameReadout, 10)
 	m.merged = make(chan *hermes.FrameReadout, 10)
 	m.file = make(chan *hermes.FrameReadout, 200)
