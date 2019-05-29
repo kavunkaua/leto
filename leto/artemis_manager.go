@@ -83,7 +83,6 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.incoming != nil {
-		m.mx.Unlock()
 		return fmt.Errorf("ArtemisManager: Start: already started")
 	}
 
