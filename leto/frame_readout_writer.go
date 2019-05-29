@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/formicidae-tracker/hermes"
@@ -9,11 +11,13 @@ import (
 )
 
 type FrameReadoutFileWriter struct {
-	f    io.WriteCloser
-	quit chan struct{}
+	f      io.WriteCloser
+	logger *log.Logger
+	quit   chan struct{}
 }
 
 func NewFrameReadoutWriter(filepath string) (*FrameReadoutFileWriter, error) {
+
 	f, err := os.Create(filepath)
 	if err != nil {
 		return nil, err
@@ -30,8 +34,9 @@ func NewFrameReadoutWriter(filepath string) (*FrameReadoutFileWriter, error) {
 	}
 
 	return &FrameReadoutFileWriter{
-		f:    f,
-		quit: make(chan struct{}),
+		f:      f,
+		quit:   make(chan struct{}),
+		logger: log.New(os.Stderr, fmt.Sprintf("[file:%s] ", filepath), log.LstdFlags),
 	}, nil
 
 }
@@ -53,8 +58,16 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 			if ok == false {
 				return
 			}
+			r.ProducerUuid = ""
 			b := proto.NewBuffer(nil)
-			b.EncodeMessage(r)
+			if err := b.EncodeMessage(r); err != nil {
+				w.logger.Printf("Could not encode message: %s", err)
+			}
+			_, err := w.f.Write(b.Bytes())
+			if err != nil {
+				w.logger.Printf("Could not write message: %s", err)
+				return
+			}
 		}
 	}
 }

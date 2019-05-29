@@ -140,7 +140,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.wg.Add(1)
 	go func() {
 		err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), ArtemisOnAccept(m.incoming), func() {
-			m.logger.Printf("All connection closed, stopping experiment")
+			m.logger.Printf("All connection closed, cleaning up experiment")
 			close(m.incoming)
 			m.mx.Lock()
 			defer m.mx.Unlock()
