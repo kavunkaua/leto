@@ -137,12 +137,15 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.wg.Add(1)
 	go func() {
 		err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), ArtemisOnAccept(m.incoming), func() {
+			m.logger.Printf("All connection closed, stopping experiment")
 			close(m.incoming)
 			m.mx.Lock()
 			defer m.mx.Unlock()
 			m.incoming = nil
 		})
-		m.logger.Printf("%s", err)
+		if err != nil {
+			m.logger.Printf("listening for tracker unhandled error: %s", err)
+		}
 		m.wg.Done()
 	}()
 	m.wg.Add(1)
@@ -278,7 +281,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 	header := make([]byte, 3*8)
 	host, err := os.Hostname()
 	if err != nil {
-		m.logger.Printf("%s", err)
+		m.logger.Printf("cannot get hostname: %s", err)
 		return
 	}
 	currentFrame := 0
@@ -298,7 +301,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 
 		_, err := io.ReadFull(m.frameBuffer, header)
 		if err != nil {
-			m.logger.Printf("%s", err)
+			m.logger.Printf("cannot read header: %s", err)
 		}
 		actual := binary.LittleEndian.Uint64(header)
 		width := binary.LittleEndian.Uint64(header[8:])
@@ -307,12 +310,12 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 			mName, _, err := FilenameWithoutOverwrite(basenameMovie)
 			cfName, _, err := FilenameWithoutOverwrite(basenameFrame)
 			if err != nil {
-				m.logger.Printf("%s", err)
+				m.logger.Printf("cannot find unique filename: %s", err)
 				return
 			}
 			f, err = os.Create(cfName)
 			if err != nil {
-				m.logger.Printf("%s", err)
+				m.logger.Printf("cannot create file: %s", err)
 			}
 
 			cbr := fmt.Sprintf("%dk", bitrate)
@@ -362,7 +365,7 @@ func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress
 		fmt.Fprintf(f, "%d %d\n", currentFrame, actual)
 		_, err = io.CopyN(rawWriter, m.frameBuffer, int64(3*width*height))
 		if err != nil {
-			m.logger.Printf("%s", err)
+			m.logger.Printf("cannot copy frame: %s", err)
 		}
 		now := time.Now()
 		if now.After(nextFile) == true {
