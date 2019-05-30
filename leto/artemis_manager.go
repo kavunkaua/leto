@@ -168,8 +168,8 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		if err != nil {
 			return err
 		}
-		// m.artemisCmd.Args = append(m.artemisCmd.Args, "--new-ant-output-dir", dirname,
-		// 	"--new-ant-roi-size", fmt.Sprintf("%d", config.NewAntOutputROISize))
+		m.artemisCmd.Args = append(m.artemisCmd.Args, "--new-ant-output-dir", dirname,
+			"--new-ant-roi-size", fmt.Sprintf("%d", config.NewAntOutputROISize))
 
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
