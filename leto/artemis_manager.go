@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -19,15 +18,16 @@ import (
 type ArtemisManager struct {
 	incoming, merged, file, broadcast chan *hermes.FrameReadout
 	mx                                sync.Mutex
-	wg, wgEncode                      sync.WaitGroup
+	wg                                sync.WaitGroup
 	quitEncode                        chan struct{}
 	fileWriter                        *FrameReadoutFileWriter
 	trackers                          *RemoteManager
 	isMaster                          bool
 
-	artemisCmd *exec.Cmd
-	muxReader  *io.PipeReader
-	muxWriter  *io.PipeWriter
+	artemisCmd    *exec.Cmd
+	artemisOut    *io.PipeWriter
+	streamIn      *io.PipeReader
+	streamManager *StreamManager
 
 	experimentDir string
 	logger        *log.Logger
@@ -52,7 +52,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 
 	return &ArtemisManager{
 		isMaster: true,
-		logger:   log.New(os.Stderr, "[artemis]", log.LstdFlags),
+		logger:   log.New(os.Stderr, "[artemis] ", log.LstdFlags),
 	}, nil
 }
 
@@ -86,14 +86,12 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		return fmt.Errorf("ArtemisManager: Start: already started")
 	}
 
-	m.logger.Printf("New experiment: %+v", config)
+	m.logger.Printf("New experiment '%s'", config.ExperimentName)
 
 	m.incoming = make(chan *hermes.FrameReadout, 10)
 	m.merged = make(chan *hermes.FrameReadout, 10)
 	m.file = make(chan *hermes.FrameReadout, 200)
 	m.broadcast = make(chan *hermes.FrameReadout, 10)
-	m.muxReader, m.muxWriter = io.Pipe()
-
 	var err error
 	m.experimentDir, err = m.ExperimentDir(config.ExperimentName)
 	if err != nil {
@@ -162,20 +160,25 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		m.wg.Done()
 	}()
 	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Tag)
+	m.artemisCmd.Stderr = nil
+	m.artemisCmd.Stdin = nil
 	if m.isMaster == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
 		err = os.MkdirAll(dirname, 0755)
 		if err != nil {
 			return err
 		}
-		m.artemisCmd.Stdout = m.muxWriter
-		m.quitEncode = make(chan struct{})
-		m.wgEncode.Add(1)
-		go m.encodeAndStream(config.Camera.FPS, config.BitRateKB, config.StreamHost)
+		// m.artemisCmd.Args = append(m.artemisCmd.Args, "--new-ant-output-dir", dirname,
+		// 	"--new-ant-roi-size", fmt.Sprintf("%d", config.NewAntOutputROISize))
+
+		m.streamIn, m.artemisOut = io.Pipe()
+		m.artemisCmd.Stdout = m.artemisOut
+		m.streamManager = NewStreamManager(m.experimentDir, config.Camera.FPS, config.BitRateKB, config.StreamHost)
+		go m.streamManager.EncodeAndStreamMuxedStream(m.streamIn)
 	} else {
 		m.artemisCmd.Stdout = nil
 	}
-	m.logger.Printf("Starting tracking : %#v", m.artemisCmd)
+	m.logger.Printf("Starting tracking for '%s'", config.ExperimentName)
 	m.experimentName = config.ExperimentName
 	m.since = time.Now()
 	m.artemisCmd.Start()
@@ -193,18 +196,8 @@ func (m *ArtemisManager) Stop() error {
 	m.artemisCmd.Process.Signal(os.Interrupt)
 	m.logger.Printf("Waiting for artemis process to stop")
 	m.artemisCmd.Wait()
-
-	if m.quitEncode != nil {
-		close(m.quitEncode)
-	}
-	m.logger.Printf("Waiting for stream tasks to stop")
-	m.wgEncode.Wait()
-	m.quitEncode = nil
-	m.muxReader.Close()
-	m.muxWriter.Close()
-	m.muxReader = nil
-	m.muxWriter = nil
 	m.artemisCmd = nil
+
 	//Stops the reading of frame readout, it will close all the chain
 	if err := m.trackers.Close(); err != nil {
 		return err
@@ -214,10 +207,21 @@ func (m *ArtemisManager) Stop() error {
 	m.wg.Wait()
 	m.fileWriter.Close()
 	m.mx.Lock()
+
+	if m.streamManager != nil {
+		m.logger.Printf("Waiting for stream tasks to stop")
+		m.artemisOut.Close()
+		m.streamManager.Wait()
+		m.streamManager = nil
+		m.streamIn.Close()
+		m.artemisOut = nil
+		m.streamIn = nil
+	}
 	m.incoming = nil
 	m.merged = nil
 	m.file = nil
 	m.broadcast = nil
+	m.logger.Printf("Experiment '%s' done", m.experimentName)
 	return nil
 }
 
@@ -254,161 +258,4 @@ func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int
 	cmd.Stderr = nil
 	cmd.Stdin = nil
 	return cmd
-}
-
-func (m *ArtemisManager) encodeAndStream(fps float64, bitrate int, streamAddress string) {
-	basenameMovie := filepath.Join(m.experimentDir, "stream.mp4")
-	basenameFrame := filepath.Join(m.experimentDir, "stream.frame-matching.txt")
-	var f *os.File
-	var encodeCmd *exec.Cmd
-	var streamCmd *exec.Cmd
-
-	rawReader, rawWriter := io.Pipe()
-	encodedReader, encodedWriter := io.Pipe()
-	defer func() {
-		if f != nil {
-			f.Close()
-		}
-		if streamCmd != nil {
-			streamCmd.Process.Signal(os.Interrupt)
-		}
-		if encodeCmd != nil {
-			encodeCmd.Process.Signal(os.Interrupt)
-		}
-
-		if streamCmd != nil {
-			log.Printf("Waiting for stream to end")
-			streamCmd.Wait()
-		}
-
-		if encodeCmd != nil {
-			log.Printf("Waiting for encoding to end")
-			encodeCmd.Wait()
-		}
-		encodedReader.Close()
-		encodedWriter.Close()
-		rawWriter.Close()
-		rawReader.Close()
-
-		m.wgEncode.Done()
-	}()
-
-	header := make([]byte, 3*8)
-	host, err := os.Hostname()
-	if err != nil {
-		m.logger.Printf("cannot get hostname: %s", err)
-		return
-	}
-	currentFrame := 0
-	defer func() {
-	}()
-
-	period := 2 * time.Hour
-	nextFile := time.Now().Add(period)
-
-	for {
-		//test if we need to quit
-		select {
-		case <-m.quitEncode:
-			return
-		default:
-		}
-
-		_, err := io.ReadFull(m.muxReader, header)
-		if err != nil {
-			m.logger.Printf("cannot read header: %s", err)
-		}
-		actual := binary.LittleEndian.Uint64(header)
-		width := binary.LittleEndian.Uint64(header[8:])
-		height := binary.LittleEndian.Uint64(header[16:])
-		if encodeCmd == nil && streamCmd == nil && f == nil {
-			mName, _, err := FilenameWithoutOverwrite(basenameMovie)
-			cfName, _, err := FilenameWithoutOverwrite(basenameFrame)
-			if err != nil {
-				m.logger.Printf("cannot find unique filename: %s", err)
-				return
-			}
-			f, err = os.Create(cfName)
-			if err != nil {
-				m.logger.Printf("cannot create file: %s", err)
-			}
-
-			cbr := fmt.Sprintf("%dk", bitrate)
-			res := fmt.Sprintf("%dx%d", width, height)
-			quality := "ultrafast"
-			encodeCmd = exec.Command("ffmpeg",
-				"-f", "rawvideo",
-				"-vcodec", "rawvideo",
-				"-pixel_format", "rgb24",
-				"-video_size", res,
-				"-framerate", fmt.Sprintf("%f", fps),
-				"-i", "-",
-				"-c:v:0", "libx264",
-				"-g", fmt.Sprintf("%d", int(2*fps)),
-				"-keyint_min", fmt.Sprintf("%d", int(fps)),
-				"-b:v", cbr,
-				"-minrate", cbr,
-				"-maxrate", cbr,
-				"-pix_fmt",
-				"yuv420p",
-				"-s", res,
-				"-preset", quality,
-				"-tune", "film",
-				"-f", "flv",
-				"-")
-			encodeCmd.Stderr = nil
-			encodeCmd.Stdin = rawReader
-			streamCmd = exec.Command("ffmpeg",
-				"-hide_banner",
-				"-loglevel", "error",
-				"-f", "flv",
-				"-i", "-",
-				"-vcodec", "copy",
-				mName)
-			if len(streamAddress) > 0 {
-				streamCmd.Args = append(streamCmd.Args,
-					"-vcodec", "copy",
-					fmt.Sprintf("rtmp://%s/olympus/%s.flv", streamAddress, host))
-			}
-			streamCmd.Stdout = encodedWriter
-			streamCmd.Stdin = encodedReader
-			m.logger.Printf("Starting streaming")
-			err = encodeCmd.Start()
-			if err != nil {
-				m.logger.Printf("Could not start encoding process: %s", err)
-			}
-			err = streamCmd.Start()
-			if err != nil {
-				m.logger.Printf("Could not start streaming process: %s", err)
-			}
-		}
-
-		fmt.Fprintf(f, "%d %d\n", currentFrame, actual)
-		_, err = io.CopyN(rawWriter, m.muxReader, int64(3*width*height))
-		if err != nil {
-			m.logger.Printf("cannot copy frame: %s", err)
-		}
-		now := time.Now()
-		if now.After(nextFile) == true {
-			m.logger.Printf("Resetting streaming after %s", period)
-			nextFile = now.Add(period)
-			//we stop streaming
-			streamCmd.Process.Signal(os.Interrupt)
-			encodeCmd.Process.Signal(os.Interrupt)
-			streamCmd.Wait()
-			encodeCmd.Wait()
-			f.Close()
-			streamCmd = nil
-			encodeCmd = nil
-			f = nil
-			rawWriter.Close()
-			rawReader.Close()
-			encodedReader.Close()
-			encodedWriter.Close()
-			rawReader, rawWriter = io.Pipe()
-			encodedReader, encodedWriter = io.Pipe()
-		}
-
-	}
-
 }

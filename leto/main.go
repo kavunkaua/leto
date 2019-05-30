@@ -56,7 +56,7 @@ func Execute() error {
 	if err != nil {
 		return err
 	}
-	l.logger = log.New(os.Stderr, "[rpc]", log.LstdFlags)
+	l.logger = log.New(os.Stderr, "[rpc] ", log.LstdFlags)
 	rpcRouter := rpc.NewServer()
 	rpcRouter.Register(l)
 	rpcRouter.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)

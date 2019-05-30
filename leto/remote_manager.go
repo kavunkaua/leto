@@ -117,7 +117,7 @@ func (m *RemoteManager) Listen(address string, onAccept func(net.Conn), onClose 
 func ArtemisOnAccept(readouts chan<- *hermes.FrameReadout) func(c net.Conn) {
 	return func(c net.Conn) {
 		errors := make(chan error)
-		logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s]", c.RemoteAddr().String()), log.LstdFlags)
+		logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s] ", c.RemoteAddr().String()), log.LstdFlags)
 		logger.Printf("new connection from %s", c.RemoteAddr().String())
 		go func() {
 			for e := range errors {
