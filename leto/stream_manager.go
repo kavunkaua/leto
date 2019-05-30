@@ -181,6 +181,7 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 
 		now := time.Now()
 		if now.After(nextFile) == true {
+			log.Printf("Creating new film segment after %s", s.period)
 			s.mx.Lock()
 			s.stopTasks()
 			s.waitUnsafe()
