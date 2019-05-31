@@ -60,7 +60,9 @@ func (w *FrameReadoutFileWriter) openFile(filep string) error {
 		return err
 	}
 
-	return nil
+	_, err = w.gzip.Write(b.Bytes())
+	log.Printf("Writing to file '%s'", filep)
+	return err
 }
 
 func (w *FrameReadoutFileWriter) closeFiles(nextFile string) {
@@ -130,8 +132,8 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 				err := w.openFile(nextName)
 				if err != nil {
 					w.logger.Printf("Could not create file '%s': %s", nextName, err)
+					return
 				}
-				return
 			}
 
 			r.ProducerUuid = ""
@@ -147,13 +149,16 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 				w.logger.Printf("Could not write message: %s", err)
 				return
 			}
-			if closeNext == true {
-				nextName, _, err = FilenameWithoutOverwrite(w.basename)
-				if err != nil {
-					w.logger.Printf("Could not find unique name: %s", err)
-				}
-				w.closeFiles(nextName)
+			if closeNext == false {
+				continue
 			}
+			closeNext = false
+
+			nextName, _, err = FilenameWithoutOverwrite(w.basename)
+			if err != nil {
+				w.logger.Printf("Could not find unique name: %s", err)
+			}
+			w.closeFiles(nextName)
 		}
 	}
 }
