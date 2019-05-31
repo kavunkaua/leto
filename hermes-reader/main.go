@@ -42,10 +42,10 @@ func Execute() error {
 	}
 
 	for {
-		m := hermes.FrameReadout{}
-		ok, err = leto.ReadDelimitedMessage(uncomp, &m)
+		line := hermes.FileLine{}
+		ok, err = leto.ReadDelimitedMessage(uncomp, &line)
 		if ok == false {
-			return fmt.Errorf("Could not read frame readout")
+			return fmt.Errorf("Could not read file line")
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -53,25 +53,21 @@ func Execute() error {
 			}
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "frame: %d, time: %s, ants: %d, error: %d\n", m.FrameID, m.Time.String(), len(m.Ants), m.Error)
-		if m.EOS == false {
+
+		if line.Readout != nil {
+			fmt.Fprintf(os.Stdout, "frame: %d, time: %s, ants: %d, error: %d\n", line.Readout.FrameID, line.Readout.Time.String(), len(line.Readout.Ants), line.Readout.Error)
+		}
+		if line.Footer == nil {
 			continue
 		}
-		footer := hermes.Footer{}
-		ok, err := leto.ReadDelimitedMessage(uncomp, &footer)
-		if err != nil {
-			return err
-		}
-		if ok == false {
-			return fmt.Errorf("Could not read footer")
-		}
-		if footer.EOS == true {
+
+		if len(line.Footer.Next) == 0 {
 			//endof stream
 			return nil
 		}
 		uncomp.Close()
 		file.Close()
-		next := filepath.Join(basedir, footer.Next)
+		next := filepath.Join(basedir, line.Footer.Next)
 		fmt.Fprintf(os.Stderr, "opening next file '%s'\n", next)
 		file, err = os.Open(next)
 		if err != nil {
@@ -91,7 +87,7 @@ func Execute() error {
 		if header.Previous != prev {
 			return fmt.Errorf("previous file for '%s' is '%s' but '%s' expected", next, header.Previous, prev)
 		}
-		prev = footer.Next
+		prev = line.Footer.Next
 	}
 
 	return nil

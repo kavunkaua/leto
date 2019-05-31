@@ -69,12 +69,15 @@ func (w *FrameReadoutFileWriter) closeFiles(nextFile string) {
 	footer := &hermes.Footer{}
 	if len(nextFile) > 0 {
 		footer.Next = filepath.Base(nextFile)
-	} else {
-		footer.EOS = true
 	}
+
+	line := &hermes.FileLine{
+		Footer: footer,
+	}
+
 	if w.gzip != nil && w.file != nil {
 		b := proto.NewBuffer(nil)
-		if err := b.EncodeMessage(footer); err != nil {
+		if err := b.EncodeMessage(line); err != nil {
 			w.logger.Printf("Could not encode footer: %s", err)
 		} else {
 			if _, err := w.gzip.Write(b.Bytes()); err != nil {
@@ -137,11 +140,11 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 			}
 
 			r.ProducerUuid = ""
-			if closeNext == true {
-				r.EOS = true
-			}
 			b := proto.NewBuffer(nil)
-			if err := b.EncodeMessage(r); err != nil {
+			line := &hermes.FileLine{
+				Readout: r,
+			}
+			if err := b.EncodeMessage(line); err != nil {
 				w.logger.Printf("Could not encode message: %s", err)
 			}
 			_, err := w.gzip.Write(b.Bytes())

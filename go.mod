@@ -3,7 +3,7 @@ module github.com/formicidae-tracker/leto
 require (
 	github.com/adrg/xdg v0.0.0-20190319220657-88e5137d2444
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
-	github.com/formicidae-tracker/hermes v0.1.6
+	github.com/formicidae-tracker/hermes v0.1.7
 	github.com/golang/protobuf v1.3.1
 	github.com/grandcat/zeroconf v0.0.0-20190424104450-85eadb44205c
 	github.com/jessevdk/go-flags v1.4.0
