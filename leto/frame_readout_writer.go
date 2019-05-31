@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/formicidae-tracker/hermes"
@@ -32,9 +33,9 @@ func NewFrameReadoutWriter(filepath string) (*FrameReadoutFileWriter, error) {
 
 }
 
-func (w *FrameReadoutFileWriter) openFile(filepath string) error {
+func (w *FrameReadoutFileWriter) openFile(filep string) error {
 	var err error
-	w.file, err = os.Create(filepath)
+	w.file, err = os.Create(filep)
 	if err != nil {
 		return err
 	}
@@ -46,9 +47,12 @@ func (w *FrameReadoutFileWriter) openFile(filepath string) error {
 			Major: 0,
 			Minor: 5,
 		},
-		Previous: w.lastname,
 	}
-	w.lastname = filepath
+	if len(w.lastname) > 0 {
+		header.Previous = filepath.Base(w.lastname)
+	}
+
+	w.lastname = filep
 
 	b := proto.NewBuffer(nil)
 	err = b.EncodeMessage(header)
@@ -62,7 +66,7 @@ func (w *FrameReadoutFileWriter) openFile(filepath string) error {
 func (w *FrameReadoutFileWriter) closeFiles(nextFile string) {
 	footer := &hermes.Footer{}
 	if len(nextFile) > 0 {
-		footer.Next = nextFile
+		footer.Next = filepath.Base(nextFile)
 	} else {
 		footer.EOS = true
 	}
@@ -150,7 +154,6 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 				}
 				w.closeFiles(nextName)
 			}
-
 		}
 	}
 }
