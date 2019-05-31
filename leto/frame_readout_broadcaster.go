@@ -52,7 +52,13 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout)
 		logger := log.New(os.Stderr, fmt.Sprintf("[broadcast/%s] ", c.RemoteAddr().String()), log.LstdFlags)
 
 		b := proto.NewBuffer(nil)
-		header := &hermes.Version{Major: 0, Minor: 5}
+		header := &hermes.Header{
+			Type: hermes.Header_Network,
+			Version: &hermes.Version{
+				Major: 0,
+				Minor: 5,
+			},
+		}
 		b.EncodeMessage(header)
 
 		_, err := c.Write(b.Bytes())

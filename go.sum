@@ -9,6 +9,8 @@ github.com/formicidae-tracker/hermes v0.1.4 h1:qEjIwMEO6ixAfBiToJHIJXRb9u9I7C5F+
 github.com/formicidae-tracker/hermes v0.1.4/go.mod h1:7DBqYw37jAvSxbpJCMvHXOc26Y4fVBc/adD5U20DjUw=
 github.com/formicidae-tracker/hermes v0.1.5 h1:6UN/VFhalEG6H+7xlsZN1z+DXZDQok8lZSeRccZkAJY=
 github.com/formicidae-tracker/hermes v0.1.5/go.mod h1:7DBqYw37jAvSxbpJCMvHXOc26Y4fVBc/adD5U20DjUw=
+github.com/formicidae-tracker/hermes v0.1.6 h1:NLnMUt6ETbMY4P2VF5fVfaqhAhuogJ5d7S7HadsXMxg=
+github.com/formicidae-tracker/hermes v0.1.6/go.mod h1:7DBqYw37jAvSxbpJCMvHXOc26Y4fVBc/adD5U20DjUw=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/grandcat/zeroconf v0.0.0-20190424104450-85eadb44205c/go.mod h1:YjKB0WsLXlMkO9p+wGTCoPIDGRJH0mz7E526PxkQVxI=

@@ -52,7 +52,7 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 		return fmt.Errorf("Could not connect to '%s': %s", c.Instance, err)
 	}
 
-	version := &hermes.Version{}
+	version := &hermes.Header{}
 	ok, err := leto.ReadDelimitedMessage(conn, version)
 	if err != nil {
 		conn.Close()

@@ -169,6 +169,7 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 				s.logger.Printf("Could not start stream tasks: %s", err)
 				return
 			}
+			currentFrame = 0
 			s.mx.Unlock()
 		}
 
