@@ -72,6 +72,7 @@ func Execute() error {
 		uncomp.Close()
 		file.Close()
 		next := filepath.Join(basedir, footer.Next)
+		fmt.Fprintf(os.Stderr, "opening next file '%s'\n", next)
 		file, err = os.Open(next)
 		if err != nil {
 			return err
