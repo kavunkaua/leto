@@ -62,6 +62,8 @@ type TrackingStart struct {
 	NewAntOutputROISize int    `long:"new-ant-size" description:"Size of the image when a new ant is found" default:"600"`
 	StreamHost          string `long:"stream-host" description:"host to stream to"`
 	BitRateKB           int    `long:"cbr" description:"Constant encoding bitrate to use in kb/s" default:"2000"`
+	Quality             string `long:"stream-quality" description:"libx264 quality preset" default:"fast"`
+	Tune                string `long:"stream-tune" description:"libx264 quality tuning" default:"film"`
 	Camera              CameraConfiguration
 	Tag                 TagDetectionConfiguration
 }

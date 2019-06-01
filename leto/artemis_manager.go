@@ -173,7 +173,10 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
-		m.streamManager = NewStreamManager(m.experimentDir, config.Camera.FPS, config.BitRateKB, config.StreamHost)
+		m.streamManager, err = NewStreamManager(m.experimentDir, config.Camera.FPS, config.BitRateKB, config.Quality, config.Tune, config.StreamHost)
+		if err != nil {
+			return err
+		}
 		go m.streamManager.EncodeAndStreamMuxedStream(m.streamIn)
 	} else {
 		m.artemisCmd.Stdout = nil

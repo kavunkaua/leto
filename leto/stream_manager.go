@@ -32,22 +32,59 @@ type StreamManager struct {
 	destAddress string
 	resolution  string
 	quality     string
+	tune        string
 
 	logger *log.Logger
 }
 
-func NewStreamManager(basedir string, fps float64, bitrate int, destAddress string) *StreamManager {
-	return &StreamManager{
+func NewStreamManager(basedir string, fps float64, bitrate int, quality string, tune string, destAddress string) (*StreamManager, error) {
+	res := &StreamManager{
 		baseMovieName:     filepath.Join(basedir, "stream.mp4"),
 		baseFrameMatching: filepath.Join(basedir, "stream.frame-matching.txt"),
 		fps:               fps,
 		bitrate:           bitrate,
 		destAddress:       destAddress,
 		resolution:        "",
-		quality:           "ultrafast",
+		quality:           quality,
+		tune:              tune,
 		period:            2 * time.Hour,
 		logger:            log.New(os.Stderr, "[stream] ", log.LstdFlags),
 	}
+	if err := res.Check(); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+var presets = map[string]bool{
+	"ultrafast": true,
+	"superfast": true,
+	"veryfast":  true,
+	"faster":    true,
+	"fast":      true,
+	"medium":    true,
+	"slow":      true,
+	"slower":    true,
+	"veryslow":  true,
+}
+
+var tunes = map[string]bool{
+	"film":        true,
+	"animation":   true,
+	"grain":       true,
+	"stillimage":  true,
+	"fastdecode":  true,
+	"zerolatency": true,
+}
+
+func (m *StreamManager) Check() error {
+	if ok := presets[m.quality]; ok == false {
+		return fmt.Errorf("unknown quality '%s'", m.quality)
+	}
+	if ok := tunes[m.tune]; ok == false {
+		return fmt.Errorf("unknown tune '%s'", m.tune)
+	}
+	return nil
 }
 
 func (s *StreamManager) waitUnsafe() {
@@ -214,7 +251,7 @@ func (s *StreamManager) buildEncodeCommand() *exec.Cmd {
 		"yuv420p",
 		"-s", s.resolution,
 		"-preset", s.quality,
-		"-tune", "film",
+		"-tune", s.tune,
 		"-f", "flv",
 		"-")
 }
