@@ -34,7 +34,7 @@ func (d *FrameReadoutDisplayer) DisplayFrameReadout(h *hermes.FrameReadout) stri
 		}
 	}
 
-	return fmt.Sprintf("%s %06d %06d %04d/%04d   ", time.Now().Format("15:04:05"), d.Frames, d.Errors, currentAnts, len(d.AntsIDs))
+	return fmt.Sprintf("%s %06d %06d %04d/%04d    %06d", time.Now().Format("15:04:05"), d.Frames, d.Errors, currentAnts, len(d.AntsIDs), h.Quads)
 }
 
 func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
@@ -74,7 +74,7 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 		AntsIDs: make(map[uint32]bool),
 	}
 
-	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Ants\n\n")
+	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Ants Quads \n\n")
 	for {
 		m := &hermes.FrameReadout{}
 		ok, err := leto.ReadDelimitedMessage(conn, m)
