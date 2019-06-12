@@ -140,6 +140,7 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 			}
 
 			r.ProducerUuid = ""
+			r.Quads = 0
 			b := proto.NewBuffer(nil)
 			line := &hermes.FileLine{
 				Readout: r,
