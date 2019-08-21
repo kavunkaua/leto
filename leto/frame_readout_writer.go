@@ -44,8 +44,8 @@ func (w *FrameReadoutFileWriter) openFile(filep string) error {
 	header := &hermes.Header{
 		Type: hermes.Header_File,
 		Version: &hermes.Version{
-			Major: 0,
-			Minor: 5,
+			Vmajor: 0,
+			Vminor: 5,
 		},
 	}
 	if len(w.lastname) > 0 {

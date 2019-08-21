@@ -55,8 +55,8 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout)
 		header := &hermes.Header{
 			Type: hermes.Header_Network,
 			Version: &hermes.Version{
-				Major: 0,
-				Minor: 5,
+				Vmajor: 0,
+				Vminor: 5,
 			},
 		}
 		b.EncodeMessage(header)
