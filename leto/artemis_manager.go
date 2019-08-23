@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -137,7 +138,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	}()
 	m.wg.Add(1)
 	go func() {
-		err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), ArtemisOnAccept(m.incoming), func() {
+		err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), m.OnAccept(), func() {
 			m.logger.Printf("All connection closed, cleaning up experiment")
 			close(m.incoming)
 			m.mx.Lock()
@@ -151,7 +152,9 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	}()
 	m.wg.Add(1)
 	go func() {
-		BroadcastFrameReadout(fmt.Sprintf(":%d", leto.ARTEMIS_OUT_PORT), m.broadcast)
+		BroadcastFrameReadout(fmt.Sprintf(":%d", leto.ARTEMIS_OUT_PORT),
+			m.broadcast,
+			3*time.Duration(1.0e6/config.Camera.FPS)*time.Microsecond)
 		m.wg.Done()
 	}()
 	m.wg.Add(1)
@@ -170,7 +173,6 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		}
 		m.artemisCmd.Args = append(m.artemisCmd.Args, "--new-ant-output-dir", dirname,
 			"--new-ant-roi-size", fmt.Sprintf("%d", config.NewAntOutputROISize))
-
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
 		m.streamManager, err = NewStreamManager(m.experimentDir, config.Camera.FPS, config.BitRateKB, config.Quality, config.Tune, config.StreamHost)
@@ -261,4 +263,18 @@ func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int
 	cmd.Stderr = nil
 	cmd.Stdin = nil
 	return cmd
+}
+
+func (m *ArtemisManager) OnAccept() func(c net.Conn) {
+	return func(c net.Conn) {
+		errors := make(chan error)
+		logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s] ", c.RemoteAddr().String()), log.LstdFlags)
+		logger.Printf("new connection from %s", c.RemoteAddr().String())
+		go func() {
+			for e := range errors {
+				logger.Printf("unhandled error: %s", e)
+			}
+		}()
+		FrameReadoutReadAll(c, m.incoming, errors)
+	}
 }

@@ -6,12 +6,13 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/formicidae-tracker/hermes"
 	"github.com/golang/protobuf/proto"
 )
 
-func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout) error {
+func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout, idle time.Duration) error {
 	logger := log.New(os.Stderr, "[broadcast] ", log.LstdFlags)
 	m := NewRemoteManager()
 
@@ -34,6 +35,7 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout)
 		for _, o := range outgoing {
 			close(o)
 		}
+		outgoing = make(map[int]chan []byte)
 	}()
 	i := 0
 	// hostname, err := os.Hostname()
@@ -73,13 +75,15 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout)
 		i += 1
 		mx.Unlock()
 		for buf := range o {
+			c.SetWriteDeadline(time.Now().Add(idle))
 			_, err := c.Write(buf)
 			if err != nil {
-				logger.Printf("Could not write frame: %s", err)
+				logger.Printf("Could not write frame conn %d: %s", idx, err)
 				mx.Lock()
 				close(o)
 				delete(outgoing, idx)
 				mx.Unlock()
+				return // need an explicit return as otherwise it may loop again and close it twice
 			}
 		}
 	}, func() {

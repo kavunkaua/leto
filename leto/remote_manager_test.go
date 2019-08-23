@@ -21,8 +21,18 @@ func (s *RemoteManagerSuite) TestManager(c *C) {
 	m := NewRemoteManager()
 
 	go m.Listen(":12345",
-		ArtemisOnAccept(readouts),
-		ArtemisOnCloseAll(readouts))
+		func(conn net.Conn) {
+			errors := make(chan error)
+			go func() {
+				for e := range errors {
+					c.Assert(e, IsNil)
+				}
+			}()
+			FrameReadoutReadAll(conn, readouts, errors)
+		},
+		func() {
+			close(readouts)
+		})
 	go func() {
 		conn, err := net.Dial("tcp", "localhost:12345")
 		c.Assert(err, IsNil)
