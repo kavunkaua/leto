@@ -18,7 +18,7 @@ type Leto struct {
 	logger  *log.Logger
 }
 
-func (l *Leto) StartTracking(args *leto.TrackingStart, resp *leto.Response) error {
+func (l *Leto) StartTracking(args *leto.TrackingConfiguration, resp *leto.Response) error {
 	l.logger.Printf("new start request for experiment '%s'", args.ExperimentName)
 	err := l.artemis.Start(args)
 	if err != nil {

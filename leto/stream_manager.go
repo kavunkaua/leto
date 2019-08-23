@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/formicidae-tracker/leto"
 )
 
 type StreamManager struct {
@@ -37,16 +39,16 @@ type StreamManager struct {
 	logger *log.Logger
 }
 
-func NewStreamManager(basedir string, fps float64, bitrate int, quality string, tune string, destAddress string) (*StreamManager, error) {
+func NewStreamManager(basedir string, fps float64, config leto.StreamConfiguration) (*StreamManager, error) {
 	res := &StreamManager{
 		baseMovieName:     filepath.Join(basedir, "stream.mp4"),
 		baseFrameMatching: filepath.Join(basedir, "stream.frame-matching.txt"),
 		fps:               fps,
-		bitrate:           bitrate,
-		destAddress:       destAddress,
+		bitrate:           *config.BitRateKB,
+		destAddress:       *config.Host,
 		resolution:        "",
-		quality:           quality,
-		tune:              tune,
+		quality:           *config.Quality,
+		tune:              *config.Tune,
 		period:            2 * time.Hour,
 		logger:            log.New(os.Stderr, "[stream] ", log.LstdFlags),
 	}

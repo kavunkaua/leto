@@ -80,11 +80,15 @@ func (*ArtemisManager) UnlinkHostname(address string) error {
 	return fmt.Errorf("Work balancing with multiple host is not yet implemented")
 }
 
-func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
+func (m *ArtemisManager) Start(config *leto.TrackingConfiguration) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.incoming != nil {
 		return fmt.Errorf("ArtemisManager: Start: already started")
+	}
+
+	if err := config.CheckAllFieldAreSet(); err != nil {
+		return fmt.Errorf("incomplete configuration: %s", err)
 	}
 
 	m.logger.Printf("New experiment '%s'", config.ExperimentName)
@@ -111,7 +115,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	m.trackers = NewRemoteManager()
 	//TODO actually write the workloadbalance and different definitions
 	wb := &WorkloadBalance{
-		FPS:       config.Camera.FPS,
+		FPS:       *config.Camera.FPS,
 		Stride:    1,
 		IDsByUUID: map[string][]bool{"foo": []bool{true}},
 	}
@@ -154,7 +158,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 	go func() {
 		BroadcastFrameReadout(fmt.Sprintf(":%d", leto.ARTEMIS_OUT_PORT),
 			m.broadcast,
-			3*time.Duration(1.0e6/config.Camera.FPS)*time.Microsecond)
+			3*time.Duration(1.0e6/(*config.Camera.FPS))*time.Microsecond)
 		m.wg.Done()
 	}()
 	m.wg.Add(1)
@@ -162,7 +166,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 		m.fileWriter.WriteAll(m.file)
 		m.wg.Done()
 	}()
-	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Tag)
+	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection)
 	m.artemisCmd.Stderr = nil
 	m.artemisCmd.Stdin = nil
 	if m.isMaster == true {
@@ -175,7 +179,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingStart) error {
 			"--new-ant-roi-size", fmt.Sprintf("%d", config.NewAntOutputROISize))
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
-		m.streamManager, err = NewStreamManager(m.experimentDir, config.Camera.FPS, config.BitRateKB, config.Quality, config.Tune, config.StreamHost)
+		m.streamManager, err = NewStreamManager(m.experimentDir, *config.Camera.FPS, config.Stream)
 		if err != nil {
 			return err
 		}
@@ -235,21 +239,21 @@ func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int
 	args = append(args, "--host", hostname)
 	args = append(args, "--port", fmt.Sprintf("%d", port))
 	args = append(args, "--uuid", UUID)
-	args = append(args, "--camera-fps", fmt.Sprintf("%f", camera.FPS))
+	args = append(args, "--camera-fps", fmt.Sprintf("%f", *camera.FPS))
 	args = append(args, "--camera-strobe-us", fmt.Sprintf("%d", camera.StrobeDuration.Nanoseconds()/1000))
 	args = append(args, "--camera-strobe-delay-us", fmt.Sprintf("%d", camera.StrobeDelay.Nanoseconds()/1000))
-	args = append(args, "--at-family", detection.Family)
-	args = append(args, "--at-quad-decimate", fmt.Sprintf("%f", detection.QuadDecimate))
-	args = append(args, "--at-quad-sigma", fmt.Sprintf("%f", detection.QuadSigma))
-	if detection.RefineEdges == true {
+	args = append(args, "--at-family", *detection.Family)
+	args = append(args, "--at-quad-decimate", fmt.Sprintf("%f", *detection.Quad.Decimate))
+	args = append(args, "--at-quad-sigma", fmt.Sprintf("%f", *detection.Quad.Sigma))
+	if *detection.Quad.RefineEdges == true {
 		args = append(args, "--at-refine-edges")
 	}
-	args = append(args, "--at-quad-min-cluster", fmt.Sprintf("%d", detection.QuadMinClusterPixel))
-	args = append(args, "--at-quad-max-n-maxima", fmt.Sprintf("%d", detection.QuadMaxNMaxima))
-	args = append(args, "--at-quad-critical-radian", fmt.Sprintf("%f", detection.QuadCriticalRadian))
-	args = append(args, "--at-quad-max-line-mse", fmt.Sprintf("%f", detection.QuadMaxLineMSE))
-	args = append(args, "--at-quad-min-bw-diff", fmt.Sprintf("%d", detection.QuadMinBWDiff))
-	if detection.QuadDeglitch == true {
+	args = append(args, "--at-quad-min-cluster", fmt.Sprintf("%d", *detection.Quad.MinClusterPixel))
+	args = append(args, "--at-quad-max-n-maxima", fmt.Sprintf("%d", *detection.Quad.MaxNMaxima))
+	args = append(args, "--at-quad-critical-radian", fmt.Sprintf("%f", *detection.Quad.CriticalRadian))
+	args = append(args, "--at-quad-max-line-mse", fmt.Sprintf("%f", *detection.Quad.MaxLineMSE))
+	args = append(args, "--at-quad-min-bw-diff", fmt.Sprintf("%d", *detection.Quad.MinBWDiff))
+	if *detection.Quad.Deglitch == true {
 		args = append(args, "--at-quad-deglitch")
 	}
 
