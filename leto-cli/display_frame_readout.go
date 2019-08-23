@@ -53,7 +53,7 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 	}
 
 	version := &hermes.Header{}
-	ok, err := leto.ReadDelimitedMessage(conn, version)
+	ok, err := hermes.ReadDelimitedMessage(conn, version)
 	if err != nil {
 		conn.Close()
 		return err
@@ -77,7 +77,7 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Ants Quads \n\n")
 	for {
 		m := &hermes.FrameReadout{}
-		ok, err := leto.ReadDelimitedMessage(conn, m)
+		ok, err := hermes.ReadDelimitedMessage(conn, m)
 		if err != nil {
 			return err
 		}

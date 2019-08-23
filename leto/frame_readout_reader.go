@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/formicidae-tracker/hermes"
-	"github.com/formicidae-tracker/leto"
 )
 
 func FrameReadoutReadAll(stream io.Reader, C chan<- *hermes.FrameReadout, E chan<- error) {
@@ -15,7 +14,7 @@ func FrameReadoutReadAll(stream io.Reader, C chan<- *hermes.FrameReadout, E chan
 
 	for {
 		m := &hermes.FrameReadout{}
-		ok, err := leto.ReadDelimitedMessage(stream, m)
+		ok, err := hermes.ReadDelimitedMessage(stream, m)
 		if err != nil {
 			if err == io.EOF {
 				return
