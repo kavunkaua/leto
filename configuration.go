@@ -83,7 +83,7 @@ func RecommendedQuadDetectionConfiguration() QuadDetectionConfiguration {
 	*res.MaxNMaxima = 10
 	*res.CriticalRadian = 10.0 * math.Pi / 180.0
 	*res.MaxLineMSE = 10.0
-	*res.MinBWDiff = 25.0
+	*res.MinBWDiff = 50
 	*res.Deglitch = false
 	return res
 }
@@ -162,6 +162,7 @@ func (from *StreamConfiguration) Merge(to *StreamConfiguration) error {
 
 type TrackingConfiguration struct {
 	ExperimentName      string                    `short:"e" long:"experiment" description:"Name of the experiment to run" yaml:"experiment"`
+	LegacyMode          *bool                     `long:"legacy-mode" description:"Produces a legacy mode data output" yaml:"legacy-mode"`
 	NewAntOutputROISize *int                      `long:"new-ant-size" description:"Size of the image when a new ant is found (recommended:600)" yaml:"new-ant-roi"`
 	NewAntRenewPeriod   *time.Duration            `long:"new-ant-renew-period" description:"Period to renew ant snapshot (recommended:2h)" yaml:"new-ant-renew-period"`
 	Stream              StreamConfiguration       `yaml:"stream"`
@@ -173,12 +174,14 @@ func RecommendedTrackingConfiguration() TrackingConfiguration {
 	res := TrackingConfiguration{
 		NewAntOutputROISize: new(int),
 		NewAntRenewPeriod:   new(time.Duration),
+		LegacyMode:          new(bool),
 		Stream:              RecommendedStreamConfiguration(),
 		Camera:              RecommendedCameraConfiguration(),
 		Detection:           RecommendedDetectionConfig(),
 	}
 	*res.NewAntOutputROISize = 600
 	*res.NewAntRenewPeriod = 2 * time.Hour
+	*res.LegacyMode = false
 	return res
 }
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	. "gopkg.in/check.v1"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -48,5 +49,46 @@ func (s *ConfigurationSuite) TestCanBeMerged(c *C) {
 
 	c.Assert(from.Merge(to), IsNil)
 	c.Check(from, DeepEquals, expected)
+
+}
+
+func (s *ConfigurationSuite) TestYAMLParsing(c *C) {
+
+	expected := RecommendedTrackingConfiguration()
+	expected.ExperimentName = "test-configuration"
+	*expected.Detection.Quad.CriticalRadian = 0.17453
+	txt := `
+experiment: test-configuration
+legacy-mode: false
+new-ant-roi: 600
+new-ant-renew-period: 2h
+stream:
+  host: ""
+  constant-bit-rate: 2000
+  quality: fast
+  tuning: film
+camera:
+  fps: 8.0
+  strobe-delay: 0us
+  strobe-duration: 1500us
+apriltag:
+  family: 36h11
+  quad:
+    decimate: 1.0
+    sigma: 0.0
+    refine-edges: false
+    min-cluster-pixel: 25
+    max-n-maxima: 10
+    critical-angle-radian: 0.17453
+    max-line-mean-square-error: 10
+    min-black-white-diff: 50
+    deglitch: false
+`
+
+	result := &TrackingConfiguration{}
+
+	c.Assert(yaml.Unmarshal([]byte(txt), result), IsNil)
+
+	c.Assert(result, DeepEquals, &expected)
 
 }
