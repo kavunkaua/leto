@@ -199,6 +199,10 @@ func (from *TrackingConfiguration) Merge(to *TrackingConfiguration) error {
 	if err := from.Detection.Merge(&to.Detection); err != nil {
 		return err
 	}
+
+	if len(to.ExperimentName) > 0 {
+		from.ExperimentName = to.ExperimentName
+	}
 	return MergeConfiguration(from, to)
 }
 

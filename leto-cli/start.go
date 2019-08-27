@@ -20,9 +20,10 @@ func (c *StartCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := leto.MergeConfiguration(config, fileConfig); err != nil {
+		if err := fileConfig.Merge(config); err != nil {
 			return fmt.Errorf("Could not merge file and commandline configuration: %s", err)
 		}
+		config = fileConfig
 	}
 
 	resp := &leto.Response{}

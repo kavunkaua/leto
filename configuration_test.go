@@ -27,6 +27,9 @@ func (s *ConfigurationSuite) TestCanBeMerged(c *C) {
 
 	expected := RecommendedTrackingConfiguration()
 
+	to.ExperimentName = "foobar"
+	expected.ExperimentName = "foobar"
+
 	to.NewAntRenewPeriod = new(time.Duration)
 	*to.NewAntRenewPeriod = 10 * time.Minute
 	*expected.NewAntRenewPeriod = 10 * time.Minute

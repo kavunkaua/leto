@@ -88,12 +88,11 @@ func (m *ArtemisManager) LoadDefaultConfig() *leto.TrackingConfiguration {
 		return &res
 	}
 
-	err = leto.MergeConfiguration(&res, systemConfig)
+	err = res.Merge(systemConfig)
 	if err != nil {
 		m.logger.Printf("Could not merge system configuration: %s", err)
 		m.logger.Printf("Reverting to library default configuration")
 		res = leto.RecommendedTrackingConfiguration()
-		return &res
 	}
 
 	return &res
@@ -108,7 +107,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	config := m.LoadDefaultConfig()
 
-	if err := leto.MergeConfiguration(config, userConfig); err != nil {
+	if err := config.Merge(userConfig); err != nil {
 		return fmt.Errorf("could not merge user configuration: %s", err)
 	}
 
