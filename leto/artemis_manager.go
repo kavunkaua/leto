@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/formicidae-tracker/hermes"
 	"github.com/formicidae-tracker/leto"
-	"gopkg.in/yaml.v2"
 )
 
 type ArtemisManager struct {
@@ -82,27 +80,9 @@ func (*ArtemisManager) UnlinkHostname(address string) error {
 	return fmt.Errorf("Work balancing with multiple host is not yet implemented")
 }
 
-func ReadSystemConfiguration() (*leto.TrackingConfiguration, error) {
-	filename := "/etc/default/leto.yml"
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Could not open '%s': %s", filename, err)
-	}
-	defer f.Close()
-	txt, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, fmt.Errorf("Could not read '%s': %s", filename, err)
-	}
-
-	res := &leto.TrackingConfiguration{}
-	err = yaml.Unmarshal(txt, res)
-
-	return res, err
-}
-
 func (m *ArtemisManager) LoadDefaultConfig() *leto.TrackingConfiguration {
 	res := leto.RecommendedTrackingConfiguration()
-	systemConfig, err := ReadSystemConfiguration()
+	systemConfig, err := leto.ReadConfiguration("/etc/default/leto.yml")
 	if err != nil {
 		m.logger.Printf("Could not load system configuration: %s", err)
 		return &res

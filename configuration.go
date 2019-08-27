@@ -2,9 +2,13 @@ package leto
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math"
+	"os"
 	"reflect"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 func MergeConfiguration(from, to interface{}) error {
@@ -138,7 +142,7 @@ func (from *CameraConfiguration) Merge(to *CameraConfiguration) error {
 type StreamConfiguration struct {
 	Host      *string `long:"stream-host" description:"host to stream to " yaml:"host"`
 	BitRateKB *int    `long:"stream-cbr" description:"Constant encoding bitrate to use in kb/s (recommended:2000)" yaml:"constant-bit-rate"`
-	Quality   *string `long:"stream-quality" description:"libx264 quality preset" (recommended:fast)" yaml:"quality"`
+	Quality   *string `long:"stream-quality" description:"libx264 quality preset (recommended:fast)" yaml:"quality"`
 	Tune      *string `long:"stream-tune" description:"libx264 quality tuning (recommended:film)" yaml:"tuning"`
 }
 
@@ -220,4 +224,21 @@ func CheckNoNilField(v reflect.Value) error {
 
 func (c *TrackingConfiguration) CheckAllFieldAreSet() error {
 	return CheckNoNilField(reflect.ValueOf(*c))
+}
+
+func ReadConfiguration(filename string) (*TrackingConfiguration, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("Could not open '%s': %s", filename, err)
+	}
+	defer f.Close()
+	txt, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read '%s': %s", filename, err)
+	}
+
+	res := &TrackingConfiguration{}
+	err = yaml.Unmarshal(txt, res)
+
+	return res, err
 }
