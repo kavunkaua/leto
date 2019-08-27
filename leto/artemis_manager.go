@@ -99,11 +99,17 @@ func (m *ArtemisManager) LoadDefaultConfig() *leto.TrackingConfiguration {
 	return &res
 }
 
-func (m *ArtemisManager) Start(config *leto.TrackingConfiguration) error {
+func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.incoming != nil {
 		return fmt.Errorf("ArtemisManager: Start: already started")
+	}
+
+	config := m.LoadDefaultConfig()
+
+	if err := leto.MergeConfiguration(config, userConfig); err != nil {
+		return fmt.Errorf("could not merge user configuration: %s", err)
 	}
 
 	if err := config.CheckAllFieldAreSet(); err != nil {
