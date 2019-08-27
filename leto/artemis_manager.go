@@ -116,6 +116,10 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		return fmt.Errorf("incomplete configuration: %s", err)
 	}
 
+	if len(config.ExperimentName) == 0 {
+		return fmt.Errorf("Missing experiment name")
+	}
+
 	m.logger.Printf("New experiment '%s'", config.ExperimentName)
 
 	m.incoming = make(chan *hermes.FrameReadout, 10)
