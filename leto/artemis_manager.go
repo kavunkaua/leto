@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/formicidae-tracker/hermes"
 	"github.com/formicidae-tracker/leto"
+	"gopkg.in/yaml.v2"
 )
 
 type ArtemisManager struct {
@@ -78,6 +80,43 @@ func (*ArtemisManager) LinkHostname(address string) error {
 
 func (*ArtemisManager) UnlinkHostname(address string) error {
 	return fmt.Errorf("Work balancing with multiple host is not yet implemented")
+}
+
+func ReadSystemConfiguration() (*leto.TrackingConfiguration, error) {
+	filename := "/etc/default/leto.yml"
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("Could not open '%s': %s", filename, err)
+	}
+	defer f.Close()
+	txt, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read '%s': %s", filename, err)
+	}
+
+	res := &leto.TrackingConfiguration{}
+	err = yaml.Unmarshal(txt, res)
+
+	return res, err
+}
+
+func (m *ArtemisManager) LoadDefaultConfig() *leto.TrackingConfiguration {
+	res := leto.RecommendedTrackingConfiguration()
+	systemConfig, err := ReadSystemConfiguration()
+	if err != nil {
+		m.logger.Printf("Could not load system configuration: %s", err)
+		return &res
+	}
+
+	err = leto.MergeConfiguration(&res, systemConfig)
+	if err != nil {
+		m.logger.Printf("Could not merge system configuration: %s", err)
+		m.logger.Printf("Reverting to library default configuration")
+		res = leto.RecommendedTrackingConfiguration()
+		return &res
+	}
+
+	return &res
 }
 
 func (m *ArtemisManager) Start(config *leto.TrackingConfiguration) error {
@@ -166,7 +205,7 @@ func (m *ArtemisManager) Start(config *leto.TrackingConfiguration) error {
 		m.fileWriter.WriteAll(m.file)
 		m.wg.Done()
 	}()
-	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection)
+	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection, *config.LegacyMode)
 	m.artemisCmd.Stderr = nil
 	m.artemisCmd.Stdin = nil
 	if m.isMaster == true {
@@ -234,11 +273,14 @@ func (m *ArtemisManager) Stop() error {
 	return nil
 }
 
-func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration) *exec.Cmd {
+func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, legacyMode bool) *exec.Cmd {
 	args := []string{}
 	args = append(args, "--host", hostname)
 	args = append(args, "--port", fmt.Sprintf("%d", port))
 	args = append(args, "--uuid", UUID)
+	if legacyMode == true {
+		args = append(args, "--legacy-mode")
+	}
 	args = append(args, "--camera-fps", fmt.Sprintf("%f", *camera.FPS))
 	args = append(args, "--camera-strobe-us", fmt.Sprintf("%d", camera.StrobeDuration.Nanoseconds()/1000))
 	args = append(args, "--camera-strobe-delay-us", fmt.Sprintf("%d", camera.StrobeDelay.Nanoseconds()/1000))
