@@ -125,12 +125,10 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	if len(config.ExperimentName) == 0 {
 		m.logger.Printf("Starting in test mode")
 		testMode = true
-		//disable streaming
-		*config.Stream.Host = ""
 		// enforces display
 		*config.DisplayOnHost = true
 
-		config.ExperimentName = "!!IN TEST MODE!!"
+		config.ExperimentName = "TEST-MODE"
 	} else {
 		m.logger.Printf("New experiment '%s'", config.ExperimentName)
 	}
@@ -293,11 +291,13 @@ func (m *ArtemisManager) Stop() error {
 
 func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, testMode, legacyMode bool) *exec.Cmd {
 	args := []string{}
-	if testMode == false {
-		args = append(args, "--host", hostname)
-		args = append(args, "--port", fmt.Sprintf("%d", port))
-		args = append(args, "--uuid", UUID)
+	if testMode == true {
+		args = append(args, "--test-mode")
 	}
+	args = append(args, "--host", hostname)
+	args = append(args, "--port", fmt.Sprintf("%d", port))
+	args = append(args, "--uuid", UUID)
+
 	if legacyMode == true {
 		args = append(args, "--legacy-mode")
 	}
