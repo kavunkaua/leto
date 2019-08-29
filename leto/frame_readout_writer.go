@@ -33,7 +33,7 @@ func NewFrameReadoutWriter(filepath string) (*FrameReadoutFileWriter, error) {
 
 }
 
-func (w *FrameReadoutFileWriter) openFile(filep string) error {
+func (w *FrameReadoutFileWriter) openFile(filep string, width, height int32) error {
 	var err error
 	w.file, err = os.Create(filep)
 	if err != nil {
@@ -45,8 +45,10 @@ func (w *FrameReadoutFileWriter) openFile(filep string) error {
 		Type: hermes.Header_File,
 		Version: &hermes.Version{
 			Vmajor: 0,
-			Vminor: 5,
+			Vminor: 2,
 		},
+		Width:  width,
+		Height: height,
 	}
 	if len(w.lastname) > 0 {
 		header.Previous = filepath.Base(w.lastname)
@@ -132,18 +134,30 @@ func (w *FrameReadoutFileWriter) WriteAll(readout <-chan *hermes.FrameReadout) {
 				return
 			}
 			if w.file == nil {
-				err := w.openFile(nextName)
+				err := w.openFile(nextName, r.Width, r.Height)
 				if err != nil {
 					w.logger.Printf("Could not create file '%s': %s", nextName, err)
 					return
 				}
 			}
 
-			r.ProducerUuid = ""
-			r.Quads = 0
+			// makes a semi-shallow copy to strip away unucessary
+			// information. Most of the data is the list of ants and
+			// we just do a shallow copy of the slice. The other
+			// embedded field could be modified freely
+			toWrite := *r
+
+			// removes unucessary information on a per-frame basis. It
+			// is concurrently safe since we are not modifying a
+			// pointed field.
+			toWrite.ProducerUuid = ""
+			toWrite.Quads = 0
+			toWrite.Width = 0
+			toWrite.Height = 0
+
 			b := proto.NewBuffer(nil)
 			line := &hermes.FileLine{
-				Readout: r,
+				Readout: &toWrite,
 			}
 			if err := b.EncodeMessage(line); err != nil {
 				w.logger.Printf("Could not encode message: %s", err)
