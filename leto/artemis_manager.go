@@ -217,7 +217,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.artemisCmd.Stderr = m.artemisLog
 	m.artemisCmd.Stdin = nil
 	if *config.DisplayOnHost == true {
-		m.artemisCmd.Args = append(m.artemisCmd.Args, "-d")
+		m.artemisCmd.Args = append(m.artemisCmd.Args, "-d", "--draw-detection")
 	}
 	if m.isMaster == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
