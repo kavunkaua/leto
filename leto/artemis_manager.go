@@ -29,6 +29,7 @@ type ArtemisManager struct {
 	artemisOut    *io.PipeWriter
 	streamIn      *io.PipeReader
 	streamManager *StreamManager
+	artemisLog    *os.File
 
 	experimentDir string
 	logger        *log.Logger
@@ -66,8 +67,13 @@ func (m *ArtemisManager) Status() (bool, string, time.Time) {
 	return true, m.experimentName, m.since
 }
 
-func (m *ArtemisManager) ExperimentDir(expname string) (string, error) {
-	basename := filepath.Join(xdg.DataHome, "fort-experiments", expname)
+func (m *ArtemisManager) ExperimentDir(expname string, testMode bool) (string, error) {
+	if testMode == false {
+		basename := filepath.Join(xdg.DataHome, "fort-experiments", expname)
+		basedir, _, err := FilenameWithoutOverwrite(basename)
+		return basedir, err
+	}
+	basename := filepath.Join(os.TempDir(), "fort-tests", expname)
 	basedir, _, err := FilenameWithoutOverwrite(basename)
 	return basedir, err
 }
@@ -115,18 +121,26 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		return fmt.Errorf("incomplete configuration: %s", err)
 	}
 
+	testMode := false
 	if len(config.ExperimentName) == 0 {
-		return fmt.Errorf("Missing experiment name")
-	}
+		m.logger.Printf("Starting in test mode")
+		testMode = true
+		//disable streaming
+		*config.Stream.Host = ""
+		// enforces display
+		*config.DisplayOnHost = true
 
-	m.logger.Printf("New experiment '%s'", config.ExperimentName)
+		config.ExperimentName = "!!IN TEST MODE!!"
+	} else {
+		m.logger.Printf("New experiment '%s'", config.ExperimentName)
+	}
 
 	m.incoming = make(chan *hermes.FrameReadout, 10)
 	m.merged = make(chan *hermes.FrameReadout, 10)
 	m.file = make(chan *hermes.FrameReadout, 200)
 	m.broadcast = make(chan *hermes.FrameReadout, 10)
 	var err error
-	m.experimentDir, err = m.ExperimentDir(config.ExperimentName)
+	m.experimentDir, err = m.ExperimentDir(config.ExperimentName, testMode)
 	if err != nil {
 		return err
 	}
@@ -194,9 +208,19 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		m.fileWriter.WriteAll(m.file)
 		m.wg.Done()
 	}()
-	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection, *config.LegacyMode)
-	m.artemisCmd.Stderr = nil
+
+	logFilePath := filepath.Join(m.experimentDir, "artemis.log")
+	m.artemisLog, err = os.Create(logFilePath)
+	if err != nil {
+		return fmt.Errorf("Could not create artemis log file ('%s'): %s", logFilePath, err)
+	}
+
+	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection, testMode, *config.LegacyMode)
+	m.artemisCmd.Stderr = m.artemisLog
 	m.artemisCmd.Stdin = nil
+	if *config.DisplayOnHost == true {
+		m.artemisCmd.Args = append(m.artemisCmd.Args, "-d")
+	}
 	if m.isMaster == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
 		err = os.MkdirAll(dirname, 0755)
@@ -235,6 +259,11 @@ func (m *ArtemisManager) Stop() error {
 	m.artemisCmd.Wait()
 	m.artemisCmd = nil
 
+	err := m.artemisLog.Close()
+	if err != nil {
+		m.logger.Printf("Could no close artemis log file: %s", err)
+	}
+
 	//Stops the reading of frame readout, it will close all the chain
 	if err := m.trackers.Close(); err != nil {
 		return err
@@ -262,11 +291,13 @@ func (m *ArtemisManager) Stop() error {
 	return nil
 }
 
-func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, legacyMode bool) *exec.Cmd {
+func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, testMode, legacyMode bool) *exec.Cmd {
 	args := []string{}
-	args = append(args, "--host", hostname)
-	args = append(args, "--port", fmt.Sprintf("%d", port))
-	args = append(args, "--uuid", UUID)
+	if testMode == false {
+		args = append(args, "--host", hostname)
+		args = append(args, "--port", fmt.Sprintf("%d", port))
+		args = append(args, "--uuid", UUID)
+	}
 	if legacyMode == true {
 		args = append(args, "--legacy-mode")
 	}

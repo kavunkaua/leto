@@ -65,6 +65,7 @@ experiment: test-configuration
 legacy-mode: false
 new-ant-roi: 600
 new-ant-renew-period: 2h
+host-display: false
 stream:
   host: ""
   constant-bit-rate: 2000

@@ -6,8 +6,9 @@
 #
 
 
-# The unique name of the experiment. It is the only required parameter.
-experiment: test-configuration
+# The name of the experiment if it is empty the tracking will be set
+# in test mode, no data will be saved
+experiment:
 
 # the legacy mode makes artemis mark frame using a frame number
 # overlay and catalogs ants like the legacy tracking system: one frame
@@ -21,6 +22,12 @@ new-ant-roi: 600
 # The process of saving new discovered tag is reset after a defined
 # period. Too small poeriod will produce a lot of data
 new-ant-renew-period: 2h
+
+# When turned on, a window will be opened on the host and the tracking
+# will be displayed in realtime. This option may reduce a bit the
+# tracking performance.
+host-display: false
+
 
 # Camera illumination settings
 camera:

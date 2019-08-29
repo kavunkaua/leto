@@ -166,6 +166,7 @@ func (from *StreamConfiguration) Merge(to *StreamConfiguration) error {
 
 type TrackingConfiguration struct {
 	ExperimentName      string                    `short:"e" long:"experiment" description:"Name of the experiment to run" yaml:"experiment"`
+	DisplayOnHost       *bool                     `long:"display-on-host" description:"Opens a window and display on host the data" yaml:"host-display"`
 	LegacyMode          *bool                     `long:"legacy-mode" description:"Produces a legacy mode data output" yaml:"legacy-mode"`
 	NewAntOutputROISize *int                      `long:"new-ant-size" description:"Size of the image when a new ant is found (recommended:600)" yaml:"new-ant-roi"`
 	NewAntRenewPeriod   *time.Duration            `long:"new-ant-renew-period" description:"Period to renew ant snapshot (recommended:2h)" yaml:"new-ant-renew-period"`
@@ -179,6 +180,7 @@ func RecommendedTrackingConfiguration() TrackingConfiguration {
 		NewAntOutputROISize: new(int),
 		NewAntRenewPeriod:   new(time.Duration),
 		LegacyMode:          new(bool),
+		DisplayOnHost:       new(bool),
 		Stream:              RecommendedStreamConfiguration(),
 		Camera:              RecommendedCameraConfiguration(),
 		Detection:           RecommendedDetectionConfig(),
@@ -186,6 +188,7 @@ func RecommendedTrackingConfiguration() TrackingConfiguration {
 	*res.NewAntOutputROISize = 600
 	*res.NewAntRenewPeriod = 2 * time.Hour
 	*res.LegacyMode = false
+	*res.DisplayOnHost = false
 	return res
 }
 
