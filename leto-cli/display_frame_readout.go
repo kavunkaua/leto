@@ -20,21 +20,21 @@ var displayFrameReadoutCommand = &DisplayFrameReadoutCommand{}
 type FrameReadoutDisplayer struct {
 	Errors  int
 	Frames  int
-	AntsIDs map[uint32]bool
+	TagsIDs map[uint32]bool
 }
 
 func (d *FrameReadoutDisplayer) DisplayFrameReadout(h *hermes.FrameReadout) string {
 	d.Frames += 1
-	currentAnts := len(h.Ants)
+	currentTags := len(h.Tags)
 	if h.Error != hermes.FrameReadout_NO_ERROR {
 		d.Errors += 1
 	} else {
-		for _, a := range h.Ants {
-			d.AntsIDs[a.ID] = true
+		for _, a := range h.Tags {
+			d.TagsIDs[a.ID] = true
 		}
 	}
 
-	return fmt.Sprintf("%s %06d %06d %04d/%04d    %06d", time.Now().Format("15:04:05"), d.Frames, d.Errors, currentAnts, len(d.AntsIDs), h.Quads)
+	return fmt.Sprintf("%s %06d %06d %04d/%04d    %06d", time.Now().Format("15:04:05"), d.Frames, d.Errors, currentTags, len(d.TagsIDs), h.Quads)
 }
 
 func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
@@ -71,10 +71,10 @@ func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 	}()
 
 	d := FrameReadoutDisplayer{
-		AntsIDs: make(map[uint32]bool),
+		TagsIDs: make(map[uint32]bool),
 	}
 
-	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Ants Quads \n\n")
+	fmt.Fprintf(os.Stdout, "Time    Frames  Errors Cur/Tot Tags Quads \n\n")
 	for {
 		m := &hermes.FrameReadout{}
 		ok, err := hermes.ReadDelimitedMessage(conn, m)

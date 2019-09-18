@@ -26,6 +26,8 @@ github.com/formicidae-tracker/hermes v0.1.10 h1:F9enrpXJiB6QKMTqtJELIAV66z3JU3gh
 github.com/formicidae-tracker/hermes v0.1.10/go.mod h1:vw2WhZbF7HssUmGo4xG+hTwLsQ4BwrBBsVdlssTxjv4=
 github.com/formicidae-tracker/hermes v0.1.11 h1:MB+LUzljkItjBmjlnZK9gRvKY53VAHAmMtU6kuQZ1PI=
 github.com/formicidae-tracker/hermes v0.1.11/go.mod h1:vw2WhZbF7HssUmGo4xG+hTwLsQ4BwrBBsVdlssTxjv4=
+github.com/formicidae-tracker/hermes v0.2.0 h1:NVY/okcA9QAaOZQ1gVS5QWBhUaFT3j9KIUiQ+ovefyA=
+github.com/formicidae-tracker/hermes v0.2.0/go.mod h1:JIRU3fD0IbqIHjNCvfVl9EWO7OviEIiDIMY/3Tg+/Jk=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
@@ -45,4 +47,5 @@ golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
