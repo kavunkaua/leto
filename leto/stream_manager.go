@@ -187,8 +187,8 @@ func (s *StreamManager) startTasks() error {
 	s.streamCmd.Stdin = s.streamIn
 
 	s.logger.Printf("Starting streaming to %s and %s", mName, s.destAddress)
-	fmt.Fprintf(s.encodingLog, "encoding command: %s\n", s.encodeCmd)
-	fmt.Fprintf(s.streamingLog, "streaming command: %s\n", s.streamCmd)
+	fmt.Fprintf(s.encodingLog, "encoding command: %s %s\n", s.encodeCmd.Path, s.encodeCmd.Args)
+	fmt.Fprintf(s.streamingLog, "streaming command: %s %s\n", s.streamCmd.Path, s.streamCmd.Args)
 	err = s.encodeCmd.Start()
 	if err != nil {
 		return err

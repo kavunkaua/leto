@@ -249,7 +249,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.logger.Printf("Starting tracking for '%s'", config.ExperimentName)
 	m.experimentName = config.ExperimentName
 	m.since = time.Now()
-	fmt.Fprintf(artemisCommandLog, "%s\n", m.artemisCmd)
+	fmt.Fprintf(artemisCommandLog, "%s %s\n", m.artemisCmd.Path, m.artemisCmd.Args)
 
 	m.artemisCmd.Start()
 	return nil
