@@ -16,6 +16,7 @@ import (
 
 type StreamManager struct {
 	mx sync.Mutex
+	wg sync.WaitGroup
 
 	period time.Duration
 
@@ -134,8 +135,10 @@ func (s *StreamManager) waitUnsafe() {
 
 func (s *StreamManager) Wait() {
 	s.mx.Lock()
-	defer s.mx.Unlock()
 	s.waitUnsafe()
+	s.mx.Unlock()
+
+	s.wg.Wait()
 }
 
 func (s *StreamManager) startTasks() error {
@@ -210,6 +213,8 @@ func (s *StreamManager) stopTasks() {
 }
 
 func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
+	s.wg.Add(1)
+	defer s.wg.Done()
 	header := make([]byte, 3*8)
 	var err error
 	s.host, err = os.Hostname()
@@ -221,15 +226,30 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 
 	nextFile := time.Now().Add(s.period)
 
+	loggedSameError := 0
+	maxHeaderTrials := 1920 * 1024 * 100
 	for {
 		_, err := io.ReadFull(muxed, header)
 		if err != nil {
-			s.logger.Printf("cannot read header: %s", err)
-			if err == io.EOF {
+			if loggedSameError == 0 {
+				s.logger.Printf("cannot read header: %s", err)
+			}
+			loggedSameError += 1
+			if loggedSameError >= maxHeaderTrials {
+				s.logger.Printf("Cannot read the header for more than %d times, quiting", maxHeaderTrials)
+				return
+			}
+			if err == io.EOF || err == io.ErrClosedPipe {
 				s.stopTasks()
 				return
 			}
+			continue
 		}
+		if loggedSameError != 0 {
+			log.Printf("header read error repeated %d time(s)", loggedSameError)
+			loggedSameError = 0
+		}
+
 		actual := binary.LittleEndian.Uint64(header)
 		width := binary.LittleEndian.Uint64(header[8:])
 		height := binary.LittleEndian.Uint64(header[16:])
