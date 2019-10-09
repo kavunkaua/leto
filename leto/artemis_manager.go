@@ -29,7 +29,6 @@ type ArtemisManager struct {
 	artemisOut    *io.PipeWriter
 	streamIn      *io.PipeReader
 	streamManager *StreamManager
-	artemisLog    *os.File
 	testMode      bool
 
 	experimentDir string
@@ -207,14 +206,16 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		m.wg.Done()
 	}()
 
-	logFilePath := filepath.Join(m.experimentDir, "artemis.log")
-	m.artemisLog, err = os.Create(logFilePath)
+	logFilePath := filepath.Join(m.experimentDir, "artemis.command")
+	artemisCommandLog, err := os.Create(logFilePath)
 	if err != nil {
 		return fmt.Errorf("Could not create artemis log file ('%s'): %s", logFilePath, err)
 	}
+	defer artemisCommandLog.Close()
 
 	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection, *config.LegacyMode)
-	m.artemisCmd.Stderr = m.artemisLog
+	m.artemisCmd.Stderr = nil
+	m.artemisCmd.Args = append(m.artemisCmd.Args, "--log-output-dir", m.experimentDir)
 	m.artemisCmd.Stdin = nil
 	if *config.DisplayOnHost == true {
 		m.artemisCmd.Args = append(m.artemisCmd.Args, "-d", "--draw-detection")
@@ -241,6 +242,8 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.logger.Printf("Starting tracking for '%s'", config.ExperimentName)
 	m.experimentName = config.ExperimentName
 	m.since = time.Now()
+	fmt.Fprintf(artemisCommandLog, "%s\n", m.artemisCmd)
+
 	m.artemisCmd.Start()
 	return nil
 }
@@ -257,11 +260,6 @@ func (m *ArtemisManager) Stop() error {
 	m.logger.Printf("Waiting for artemis process to stop")
 	m.artemisCmd.Wait()
 	m.artemisCmd = nil
-
-	err := m.artemisLog.Close()
-	if err != nil {
-		m.logger.Printf("Could no close artemis log file: %s", err)
-	}
 
 	//Stops the reading of frame readout, it will close all the chain
 	if err := m.trackers.Close(); err != nil {
