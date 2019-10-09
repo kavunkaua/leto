@@ -249,3 +249,17 @@ func ReadConfiguration(filename string) (*TrackingConfiguration, error) {
 
 	return res, err
 }
+
+func (c *TrackingConfiguration) WriteConfiguration(filename string) error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("Could not encode configuration: %s", err)
+	}
+
+	err = ioutil.WriteFile(filename, data, 0644)
+	if err != nil {
+		return fmt.Errorf("Could not write '%s': %s", filename, err)
+	}
+
+	return nil
+}

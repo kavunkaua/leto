@@ -146,6 +146,13 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		return err
 	}
 
+	//save the config to the experiment dir
+	confSaveName := filepath.Join(m.experimentDir, "leto-final-config.yml")
+	err = config.WriteConfiguration(confSaveName)
+	if err != nil {
+		return err
+	}
+
 	m.fileWriter, err = NewFrameReadoutWriter(filepath.Join(m.experimentDir, "tracking.hermes"))
 	if err != nil {
 		return err
