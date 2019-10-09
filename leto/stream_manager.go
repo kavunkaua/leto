@@ -19,13 +19,15 @@ type StreamManager struct {
 
 	period time.Duration
 
-	baseMovieName, baseFrameMatching string
-	encodeCmd, streamCmd             *exec.Cmd
+	baseMovieName, baseFrameMatching, encodeLogBase, streamLogBase string
+	encodeCmd, streamCmd                                           *exec.Cmd
 
 	encodeIn            io.WriteCloser
 	encodeOut           *io.PipeWriter
 	streamIn            *io.PipeReader
 	frameCorrespondance *os.File
+	encodingLog         *os.File
+	streamingLog        *os.File
 
 	host string
 
@@ -43,6 +45,8 @@ func NewStreamManager(basedir string, fps float64, config leto.StreamConfigurati
 	res := &StreamManager{
 		baseMovieName:     filepath.Join(basedir, "stream.mp4"),
 		baseFrameMatching: filepath.Join(basedir, "stream.frame-matching.txt"),
+		encodeLogBase:     filepath.Join(basedir, "encoding.log"),
+		streamLogBase:     filepath.Join(basedir, "streaming.log"),
 		fps:               fps,
 		bitrate:           *config.BitRateKB,
 		destAddress:       *config.Host,
@@ -115,6 +119,17 @@ func (s *StreamManager) waitUnsafe() {
 		s.frameCorrespondance.Close()
 		s.frameCorrespondance = nil
 	}
+
+	if s.encodingLog != nil {
+		s.encodingLog.Close()
+		s.encodingLog = nil
+	}
+
+	if s.streamingLog != nil {
+		s.streamingLog.Close()
+		s.streamingLog = nil
+	}
+
 }
 
 func (s *StreamManager) Wait() {
@@ -124,6 +139,23 @@ func (s *StreamManager) Wait() {
 }
 
 func (s *StreamManager) startTasks() error {
+	encodeLogName, _, err := FilenameWithoutOverwrite(s.encodeLogBase)
+	if err != nil {
+		return err
+	}
+
+	streamLogName, _, err := FilenameWithoutOverwrite(s.streamLogBase)
+	if err != nil {
+		return err
+	}
+	s.encodingLog, err = os.Create(encodeLogName)
+	if err != nil {
+		return err
+	}
+	s.streamingLog, err = os.Create(streamLogName)
+	if err != nil {
+		return err
+	}
 
 	mName, _, err := FilenameWithoutOverwrite(s.baseMovieName)
 	if err != nil {
@@ -138,6 +170,7 @@ func (s *StreamManager) startTasks() error {
 	if err != nil {
 		return err
 	}
+
 	s.streamIn, s.encodeOut = io.Pipe()
 
 	s.encodeCmd = s.buildEncodeCommand()
@@ -145,15 +178,17 @@ func (s *StreamManager) startTasks() error {
 	if err != nil {
 		return err
 	}
-	s.encodeCmd.Stderr = nil
+	s.encodeCmd.Stderr = s.encodingLog
 	s.encodeCmd.Stdout = s.encodeOut
 
 	s.streamCmd = s.buildStreamCommand(mName)
 	s.streamCmd.Stdout = nil
-	s.streamCmd.Stderr = nil
+	s.streamCmd.Stderr = s.streamingLog
 	s.streamCmd.Stdin = s.streamIn
 
 	s.logger.Printf("Starting streaming to %s and %s", mName, s.destAddress)
+	fmt.Fprintf(s.encodingLog, "encoding command: %s\n", s.encodeCmd)
+	fmt.Fprintf(s.streamingLog, "streaming command: %s\n", s.streamCmd)
 	err = s.encodeCmd.Start()
 	if err != nil {
 		return err
