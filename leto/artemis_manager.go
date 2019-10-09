@@ -226,7 +226,8 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 			return err
 		}
 		m.artemisCmd.Args = append(m.artemisCmd.Args, "--new-ant-output-dir", dirname,
-			"--new-ant-roi-size", fmt.Sprintf("%d", *config.NewAntOutputROISize))
+			"--new-ant-roi-size", fmt.Sprintf("%d", *config.NewAntOutputROISize),
+			"--ant-renew-period-hour", fmt.Sprintf("%f", config.NewAntRenewPeriod.Hours()))
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
 		m.streamManager, err = NewStreamManager(m.experimentDir, *config.Camera.FPS, config.Stream)

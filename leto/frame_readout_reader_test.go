@@ -24,7 +24,7 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 		&hermes.FrameReadout{
 			Timestamp:    0,
 			FrameID:      0,
-			Ants:         nil,
+			Tags:         nil,
 			Time:         nil,
 			Error:        hermes.FrameReadout_NO_ERROR,
 			ProducerUuid: "foo",
@@ -32,7 +32,7 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 		&hermes.FrameReadout{
 			Timestamp:    100000,
 			FrameID:      42,
-			Ants:         nil,
+			Tags:         nil,
 			Time:         nil,
 			Error:        hermes.FrameReadout_PROCESS_OVERFLOW,
 			ProducerUuid: "foo",
@@ -40,14 +40,14 @@ func (s *FrameReadoutReaderSuite) TestHelloWorld(c *C) {
 	}
 
 	for i := 0; i < 1000; i++ {
-		a := &hermes.Ant{
+		a := &hermes.Tag{
 			ID:    uint32(rand.Intn(20000)),
 			X:     rand.Float64() * 1000.0,
 			Y:     rand.Float64() * 1000.0,
 			Theta: rand.Float64() * 2.0 * math.Pi,
 		}
 
-		testdata[0].Ants = append(testdata[0].Ants, a)
+		testdata[0].Tags = append(testdata[0].Tags, a)
 	}
 
 	b := proto.NewBuffer(nil)

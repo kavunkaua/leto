@@ -9,7 +9,9 @@ require (
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/miekg/dns v1.1.10 // indirect
-	golang.org/x/net v0.0.0-20190514140710-3ec191127204 // indirect
+	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+go 1.13
