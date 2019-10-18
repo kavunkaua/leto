@@ -19,7 +19,7 @@ import (
 type ArtemisManager struct {
 	incoming, merged, file, broadcast chan *hermes.FrameReadout
 	mx                                sync.Mutex
-	wg                                sync.WaitGroup
+	wg, artemisWg                     sync.WaitGroup
 	quitEncode                        chan struct{}
 	fileWriter                        *FrameReadoutFileWriter
 	trackers                          *RemoteManager
@@ -251,7 +251,53 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.since = time.Now()
 	fmt.Fprintf(artemisCommandLog, "%s %s\n", m.artemisCmd.Path, m.artemisCmd.Args)
 
-	m.artemisCmd.Start()
+	m.artemisWg.Add(1)
+	go func() {
+		defer m.artemisWg.Done()
+		err := m.artemisCmd.Run()
+		m.mx.Lock()
+		defer m.mx.Unlock()
+
+		if err != nil {
+			m.logger.Printf("artemis child process exited with error: %s", err)
+		}
+		m.artemisCmd = nil
+		//Stops the reading of frame readout, it will close all the chain
+		err = m.trackers.Close()
+		if err != nil {
+			m.logger.Printf("Could not close connections: %s", err)
+		}
+
+		log.Printf("Waiting for all connection to be closed")
+		m.mx.Unlock()
+		m.wg.Wait()
+		m.fileWriter.Close()
+		m.mx.Lock()
+
+		if m.streamManager != nil {
+			m.logger.Printf("Waiting for stream tasks to stop")
+			m.artemisOut.Close()
+			m.streamManager.Wait()
+			m.streamManager = nil
+			m.streamIn.Close()
+			m.artemisOut = nil
+			m.streamIn = nil
+		}
+
+		m.incoming = nil
+		m.merged = nil
+		m.file = nil
+		m.broadcast = nil
+		m.logger.Printf("Experiment '%s' done", m.experimentName)
+
+		if m.testMode == true {
+			log.Printf("Cleaning '%s'", m.experimentDir)
+			if err := os.RemoveAll(m.experimentDir); err != nil {
+				log.Printf("Could not clean '%s': %s", m.experimentDir, err)
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -263,42 +309,15 @@ func (m *ArtemisManager) Stop() error {
 		return fmt.Errorf("Already stoppped")
 	}
 
-	m.artemisCmd.Process.Signal(os.Interrupt)
-	m.logger.Printf("Waiting for artemis process to stop")
-	m.artemisCmd.Wait()
-	m.artemisCmd = nil
-
-	//Stops the reading of frame readout, it will close all the chain
-	if err := m.trackers.Close(); err != nil {
-		return err
+	if m.artemisCmd != nil {
+		m.artemisCmd.Process.Signal(os.Interrupt)
+		m.logger.Printf("Waiting for artemis process to stop")
+		m.artemisCmd = nil
 	}
-	log.Printf("Waiting for all connection to be closed")
+
 	m.mx.Unlock()
-	m.wg.Wait()
-	m.fileWriter.Close()
+	m.artemisWg.Wait()
 	m.mx.Lock()
-
-	if m.streamManager != nil {
-		m.logger.Printf("Waiting for stream tasks to stop")
-		m.artemisOut.Close()
-		m.streamManager.Wait()
-		m.streamManager = nil
-		m.streamIn.Close()
-		m.artemisOut = nil
-		m.streamIn = nil
-	}
-	m.incoming = nil
-	m.merged = nil
-	m.file = nil
-	m.broadcast = nil
-	m.logger.Printf("Experiment '%s' done", m.experimentName)
-
-	if m.testMode == true {
-		log.Printf("Cleaning '%s'", m.experimentDir)
-		if err := os.RemoveAll(m.experimentDir); err != nil {
-			log.Printf("Could not clean '%s': %s", m.experimentDir, err)
-		}
-	}
 	return nil
 }
 
