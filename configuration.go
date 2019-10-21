@@ -140,21 +140,24 @@ func (from *CameraConfiguration) Merge(to *CameraConfiguration) error {
 }
 
 type StreamConfiguration struct {
-	Host      *string `long:"stream-host" description:"host to stream to " yaml:"host"`
-	BitRateKB *int    `long:"stream-cbr" description:"Constant encoding bitrate to use in kb/s (recommended:2000)" yaml:"constant-bit-rate"`
-	Quality   *string `long:"stream-quality" description:"libx264 quality preset (recommended:fast)" yaml:"quality"`
-	Tune      *string `long:"stream-tune" description:"libx264 quality tuning (recommended:film)" yaml:"tuning"`
+	Host            *string  `long:"stream-host" description:"host to stream to " yaml:"host"`
+	BitRateKB       *int     `long:"stream-bitrate" description:"Constant encoding bitrate to use in kb/s (recommended:2000)" yaml:"bitrate"`
+	BitRateMaxRatio *float64 `long:"stream-bitrate-max-ratio" description:"Constraint on the max ratio for bitrate encoding" yaml:"bitrate-max-ratio"`
+	Quality         *string  `long:"stream-quality" description:"libx264 quality preset (recommended:fast)" yaml:"quality"`
+	Tune            *string  `long:"stream-tune" description:"libx264 quality tuning (recommended:film)" yaml:"tuning"`
 }
 
 func RecommendedStreamConfiguration() StreamConfiguration {
 	res := StreamConfiguration{
-		Host:      new(string),
-		BitRateKB: new(int),
-		Quality:   new(string),
-		Tune:      new(string),
+		Host:            new(string),
+		BitRateKB:       new(int),
+		BitRateMaxRatio: new(float64),
+		Quality:         new(string),
+		Tune:            new(string),
 	}
 	*res.Host = ""
 	*res.BitRateKB = 2000
+	*res.BitRateMaxRatio = 1.5
 	*res.Quality = "fast"
 	*res.Tune = "film"
 	return res

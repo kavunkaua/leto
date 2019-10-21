@@ -34,6 +34,7 @@ type StreamManager struct {
 
 	fps         float64
 	bitrate     int
+	maxBitrate  int
 	destAddress string
 	resolution  string
 	quality     string
@@ -50,6 +51,7 @@ func NewStreamManager(basedir string, fps float64, config leto.StreamConfigurati
 		streamLogBase:     filepath.Join(basedir, "streaming.log"),
 		fps:               fps,
 		bitrate:           *config.BitRateKB,
+		maxBitrate:        int(float64(*config.BitRateKB) * *config.BitRateMaxRatio),
 		destAddress:       *config.Host,
 		resolution:        "",
 		quality:           *config.Quality,
@@ -288,10 +290,10 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 }
 
 func (s *StreamManager) buildEncodeCommand() *exec.Cmd {
-	cbr := fmt.Sprintf("%dk", s.bitrate)
+	vbr := fmt.Sprintf("%dk", s.bitrate)
+	maxbr := fmt.Sprintf("%dk", s.maxBitrate)
 	return exec.Command("ffmpeg",
 		"-hide_banner",
-		"-loglevel", "error",
 		"-f", "rawvideo",
 		"-vcodec", "rawvideo",
 		"-pixel_format", "rgb24",
@@ -301,9 +303,9 @@ func (s *StreamManager) buildEncodeCommand() *exec.Cmd {
 		"-c:v:0", "libx264",
 		"-g", fmt.Sprintf("%d", int(2*s.fps)),
 		"-keyint_min", fmt.Sprintf("%d", int(s.fps)),
-		"-b:v", cbr,
-		"-minrate", cbr,
-		"-maxrate", cbr,
+		"-b:v", vbr,
+		"-maxrate", maxbr,
+		"-bufsize", vbr,
 		"-pix_fmt",
 		"yuv420p",
 		"-s", s.resolution,
@@ -316,7 +318,6 @@ func (s *StreamManager) buildEncodeCommand() *exec.Cmd {
 func (s *StreamManager) buildStreamCommand(file string) *exec.Cmd {
 	res := exec.Command("ffmpeg",
 		"-hide_banner",
-		"-loglevel", "error",
 		"-f", "flv",
 		"-i", "-",
 		"-vcodec", "copy",
