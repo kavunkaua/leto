@@ -314,8 +314,11 @@ func (s *StreamManager) startTasks() error {
 }
 
 func (s *StreamManager) stopTasks() {
-	s.logger.Printf("Stopping streaming tasks")
+	if s.encodeCmd == nil {
+		return
+	}
 
+	s.logger.Printf("Stopping streaming tasks")
 	s.encodeCmd.Stdin().Close()
 	s.encodeCmd.Stop()
 }
@@ -348,6 +351,8 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 				return
 			}
 			if err == io.EOF || err == io.ErrClosedPipe {
+				s.mx.Lock()
+				defer s.mx.Unlock()
 				s.stopTasks()
 				return
 			}
@@ -364,8 +369,8 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 		if len(s.resolution) == 0 {
 			s.resolution = fmt.Sprintf("%dx%d", width, height)
 		}
+		s.mx.Lock()
 		if s.encodeCmd == nil && s.streamCmd == nil && s.frameCorrespondance == nil {
-			s.mx.Lock()
 			if err := s.startTasks(); err != nil {
 				s.mx.Unlock()
 				s.logger.Printf("Could not start stream tasks: %s", err)
@@ -399,6 +404,7 @@ func (s *StreamManager) encodeCommandArgs() []string {
 	vbr := fmt.Sprintf("%dk", s.bitrate)
 	maxbr := fmt.Sprintf("%dk", s.maxBitrate)
 	return []string{"-hide_banner",
+		"-loglevel", "warning",
 		"-f", "rawvideo",
 		"-vcodec", "rawvideo",
 		"-pixel_format", "rgb24",
@@ -425,6 +431,7 @@ func (s *StreamManager) streamCommandArgs() []string {
 		return []string{}
 	}
 	return []string{"-hide_banner",
+		"-loglevel", "warning",
 		"-f", "flv",
 		"-i", "-",
 		"-vcodec", "copy",
@@ -434,6 +441,7 @@ func (s *StreamManager) streamCommandArgs() []string {
 
 func (s *StreamManager) saveCommandArgs(file string) []string {
 	return []string{"-hide_banner",
+		"-loglevel", "warning",
 		"-f", "flv",
 		"-i", "-",
 		"-vcodec", "copy",
