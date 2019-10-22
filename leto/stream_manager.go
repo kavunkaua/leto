@@ -182,11 +182,11 @@ func (s *StreamManager) waitUnsafe() {
 }
 
 func (s *StreamManager) Wait() {
+	s.wg.Wait()
+
 	s.mx.Lock()
 	s.waitUnsafe()
 	s.mx.Unlock()
-
-	s.wg.Wait()
 }
 
 func TeeCopy(dst, dstErrorIgnored io.Writer, src io.Reader) error {
