@@ -14,21 +14,73 @@ import (
 	"github.com/formicidae-tracker/leto"
 )
 
+type FFMpegCommand struct {
+	log    *os.File
+	ecmd   *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+}
+
+func NewFFMpegCommand(args []string, streamType string, logFileName string) (*FFMpegCommand, error) {
+	cmd := &FFMpegCommand{
+		ecmd: exec.Command("ffmpeg", args...),
+	}
+	var err error
+	cmd.log, err = os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	cmd.ecmd.Stderr = cmd.log
+	cmd.stdin, err = cmd.ecmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	cmd.stdout, err = cmd.ecmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	return cmd, nil
+}
+
+func (cmd *FFMpegCommand) Stdin() io.WriteCloser {
+	return cmd.stdin
+}
+
+func (cmd *FFMpegCommand) Stdout() io.ReadCloser {
+	return cmd.stdout
+}
+
+func (cmd *FFMpegCommand) Start() error {
+	return cmd.ecmd.Start()
+}
+
+func (cmd *FFMpegCommand) Stop() {
+	if cmd.ecmd.Process == nil {
+		return
+	}
+	cmd.ecmd.Process.Signal(os.Interrupt)
+}
+
+func (cmd *FFMpegCommand) Wait() error {
+	return cmd.ecmd.Wait()
+}
+
 type StreamManager struct {
 	mx sync.Mutex
 	wg sync.WaitGroup
 
 	period time.Duration
 
-	baseMovieName, baseFrameMatching, encodeLogBase, streamLogBase string
-	encodeCmd, streamCmd                                           *exec.Cmd
+	baseMovieName     string
+	baseFrameMatching string
+	encodeLogBase     string
+	streamLogBase     string
+	saveLogBase       string
 
-	encodeIn            io.WriteCloser
-	encodeOut           *io.PipeWriter
-	streamIn            *io.PipeReader
+	encodeCmd, streamCmd, saveCmd *FFMpegCommand
+
 	frameCorrespondance *os.File
-	encodingLog         *os.File
-	streamingLog        *os.File
 
 	host string
 
@@ -49,6 +101,7 @@ func NewStreamManager(basedir string, fps float64, config leto.StreamConfigurati
 		baseFrameMatching: filepath.Join(basedir, "stream.frame-matching.txt"),
 		encodeLogBase:     filepath.Join(basedir, "encoding.log"),
 		streamLogBase:     filepath.Join(basedir, "streaming.log"),
+		saveLogBase:       filepath.Join(basedir, "save.log"),
 		fps:               fps,
 		bitrate:           *config.BitRateKB,
 		maxBitrate:        int(float64(*config.BitRateKB) * *config.BitRateMaxRatio),
@@ -97,40 +150,33 @@ func (m *StreamManager) Check() error {
 }
 
 func (s *StreamManager) waitUnsafe() {
-	s.logger.Printf("waiting for encoding to stop")
+
 	if s.encodeCmd != nil {
+		s.logger.Printf("waiting for encoding to stop")
 		s.encodeCmd.Wait()
-		s.encodeCmd = nil
 	}
-	if s.encodeOut != nil {
-		s.encodeOut.Close()
-		s.encodeOut = nil
+
+	if s.saveCmd != nil {
+		s.saveCmd.Stop()
+		s.logger.Printf("waiting for saving to stop")
+		s.saveCmd.Wait()
+		s.saveCmd.Stdout().Close()
 	}
 
 	if s.streamCmd != nil {
+		s.streamCmd.Stop()
 		s.logger.Printf("waiting for streaming to stop")
 		s.streamCmd.Wait()
-		s.streamCmd = nil
+		s.streamCmd.Stdout().Close()
 	}
 
-	if s.streamIn != nil {
-		s.streamIn.Close()
-		s.streamIn = nil
-	}
+	s.encodeCmd = nil
+	s.saveCmd = nil
+	s.streamCmd = nil
 
 	if s.frameCorrespondance != nil {
 		s.frameCorrespondance.Close()
 		s.frameCorrespondance = nil
-	}
-
-	if s.encodingLog != nil {
-		s.encodingLog.Close()
-		s.encodingLog = nil
-	}
-
-	if s.streamingLog != nil {
-		s.streamingLog.Close()
-		s.streamingLog = nil
 	}
 
 }
@@ -143,6 +189,40 @@ func (s *StreamManager) Wait() {
 	s.wg.Wait()
 }
 
+func TeeCopy(dst, dstErrorIgnored io.Writer, src io.Reader) error {
+	size := 32 * 1024
+	if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {
+		if l.N < 1 {
+			size = 1
+		} else {
+			size = int(l.N)
+		}
+	}
+	buf := make([]byte, size)
+	for {
+		nr, err := src.Read(buf)
+		if nr > 0 {
+			//try t
+			nw, errw1 := dst.Write(buf[0:nr])
+			if errw1 != nil {
+				return errw1
+			}
+			if nw != nr {
+				return io.ErrShortWrite
+			}
+
+			dstErrorIgnored.Write(buf[0:nr])
+		}
+
+		if err != nil {
+			if err != io.EOF {
+				return err
+			}
+			return nil
+		}
+	}
+}
+
 func (s *StreamManager) startTasks() error {
 	encodeLogName, _, err := FilenameWithoutOverwrite(s.encodeLogBase)
 	if err != nil {
@@ -153,11 +233,8 @@ func (s *StreamManager) startTasks() error {
 	if err != nil {
 		return err
 	}
-	s.encodingLog, err = os.Create(encodeLogName)
-	if err != nil {
-		return err
-	}
-	s.streamingLog, err = os.Create(streamLogName)
+
+	saveLogName, _, err := FilenameWithoutOverwrite(s.saveLogBase)
 	if err != nil {
 		return err
 	}
@@ -176,42 +253,71 @@ func (s *StreamManager) startTasks() error {
 		return err
 	}
 
-	s.streamIn, s.encodeOut = io.Pipe()
-
-	s.encodeCmd = s.buildEncodeCommand()
-	s.encodeIn, err = s.encodeCmd.StdinPipe()
+	s.encodeCmd, err = NewFFMpegCommand(s.encodeCommandArgs(), "encode", encodeLogName)
 	if err != nil {
 		return err
 	}
-	s.encodeCmd.Stderr = s.encodingLog
-	s.encodeCmd.Stdout = s.encodeOut
 
-	s.streamCmd = s.buildStreamCommand(mName)
-	s.streamCmd.Stdout = nil
-	s.streamCmd.Stderr = s.streamingLog
-	s.streamCmd.Stdin = s.streamIn
+	s.saveCmd, err = NewFFMpegCommand(s.saveCommandArgs(mName), "save", saveLogName)
+	if err != nil {
+		return err
+	}
+	streamArgs := s.streamCommandArgs()
+
+	copyRoutine := func() error {
+		_, err := io.Copy(s.saveCmd.Stdin(), s.encodeCmd.Stdout())
+		s.encodeCmd.Stdout().Close()
+		s.saveCmd.Stdin().Close()
+		return err
+	}
+
+	if len(streamArgs) > 0 {
+		s.streamCmd, err = NewFFMpegCommand(streamArgs, "stream", streamLogName)
+		if err != nil {
+			return err
+		}
+		copyRoutine = func() error {
+			err := TeeCopy(s.saveCmd.Stdin(), s.streamCmd.Stdin(), s.encodeCmd.Stdout())
+			s.encodeCmd.Stdout().Close()
+			s.saveCmd.Stdin().Close()
+			s.streamCmd.Stdin().Close()
+			return err
+		}
+	}
+
+	s.wg.Add(1)
+	go func() {
+		err := copyRoutine()
+		if err != nil {
+			s.logger.Printf("Could not tranfer data between tasks: %s", err)
+		}
+		s.logger.Printf("Copying routine finished")
+		s.wg.Done()
+	}()
 
 	s.logger.Printf("Starting streaming to %s and %s", mName, s.destAddress)
-	fmt.Fprintf(s.encodingLog, "encoding command: %s %s\n", s.encodeCmd.Path, s.encodeCmd.Args)
-	fmt.Fprintf(s.streamingLog, "streaming command: %s %s\n", s.streamCmd.Path, s.streamCmd.Args)
 	err = s.encodeCmd.Start()
 	if err != nil {
 		return err
 	}
-	err = s.streamCmd.Start()
-	return err
+
+	err = s.saveCmd.Start()
+	if err != nil {
+		return err
+	}
+
+	if s.streamCmd != nil {
+		return s.streamCmd.Start()
+	}
+
+	return nil
 }
 
 func (s *StreamManager) stopTasks() {
 	s.logger.Printf("Stopping streaming tasks")
 
-	if s.encodeIn != nil {
-		s.encodeIn.Close()
-	}
-	if s.encodeCmd != nil {
-		s.encodeCmd.Process.Signal(os.Interrupt)
-	}
-
+	s.encodeCmd.Stdin().Close()
+	s.encodeCmd.Stop()
 }
 
 func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
@@ -224,12 +330,12 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 		s.logger.Printf("cannot get hostname: %s", err)
 		return
 	}
-	currentFrame := 0
 
+	currentFrame := 0
 	nextFile := time.Now().Add(s.period)
 
 	loggedSameError := 0
-	maxHeaderTrials := 1920 * 1024 * 100
+	maxHeaderTrials := 1920 * 1024 * 3 * 30
 	for {
 		_, err := io.ReadFull(muxed, header)
 		if err != nil {
@@ -270,7 +376,7 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 		}
 
 		fmt.Fprintf(s.frameCorrespondance, "%d %d\n", currentFrame, actual)
-		_, err = io.CopyN(s.encodeIn, muxed, int64(3*width*height))
+		_, err = io.CopyN(s.encodeCmd.Stdin(), muxed, int64(3*width*height))
 		if err != nil {
 			s.logger.Printf("cannot copy frame: %s", err)
 		}
@@ -289,11 +395,10 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 
 }
 
-func (s *StreamManager) buildEncodeCommand() *exec.Cmd {
+func (s *StreamManager) encodeCommandArgs() []string {
 	vbr := fmt.Sprintf("%dk", s.bitrate)
 	maxbr := fmt.Sprintf("%dk", s.maxBitrate)
-	return exec.Command("ffmpeg",
-		"-hide_banner",
+	return []string{"-hide_banner",
 		"-f", "rawvideo",
 		"-vcodec", "rawvideo",
 		"-pixel_format", "rgb24",
@@ -312,20 +417,25 @@ func (s *StreamManager) buildEncodeCommand() *exec.Cmd {
 		"-preset", s.quality,
 		"-tune", s.tune,
 		"-f", "flv",
-		"-")
+		"-"}
 }
 
-func (s *StreamManager) buildStreamCommand(file string) *exec.Cmd {
-	res := exec.Command("ffmpeg",
-		"-hide_banner",
+func (s *StreamManager) streamCommandArgs() []string {
+	if len(s.destAddress) == 0 {
+		return []string{}
+	}
+	return []string{"-hide_banner",
 		"-f", "flv",
 		"-i", "-",
 		"-vcodec", "copy",
-		file)
-	if len(s.destAddress) > 0 {
-		res.Args = append(res.Args,
-			"-vcodec", "copy",
-			fmt.Sprintf("rtmp://%s/olympus/%s.flv", s.destAddress, s.host))
+		fmt.Sprintf("rtmp://%s/olympus/%s.flv", s.destAddress, s.host),
 	}
-	return res
+}
+
+func (s *StreamManager) saveCommandArgs(file string) []string {
+	return []string{"-hide_banner",
+		"-f", "flv",
+		"-i", "-",
+		"-vcodec", "copy",
+		file}
 }
