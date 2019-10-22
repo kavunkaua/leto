@@ -377,8 +377,8 @@ func (s *StreamManager) EncodeAndStreamMuxedStream(muxed io.Reader) {
 				return
 			}
 			currentFrame = 0
-			s.mx.Unlock()
 		}
+		s.mx.Unlock()
 
 		fmt.Fprintf(s.frameCorrespondance, "%d %d\n", currentFrame, actual)
 		_, err = io.CopyN(s.encodeCmd.Stdin(), muxed, int64(3*width*height))
