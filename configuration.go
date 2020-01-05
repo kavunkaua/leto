@@ -176,6 +176,7 @@ type TrackingConfiguration struct {
 	Stream              StreamConfiguration       `yaml:"stream"`
 	Camera              CameraConfiguration       `yaml:"camera"`
 	Detection           TagDetectionConfiguration `yaml:"apriltag"`
+	Highlights          *[]int                    `yaml:"highlights"`
 }
 
 func RecommendedTrackingConfiguration() TrackingConfiguration {
@@ -187,6 +188,7 @@ func RecommendedTrackingConfiguration() TrackingConfiguration {
 		Stream:              RecommendedStreamConfiguration(),
 		Camera:              RecommendedCameraConfiguration(),
 		Detection:           RecommendedDetectionConfig(),
+		Highlights:          &([]int{}),
 	}
 	*res.NewAntOutputROISize = 600
 	*res.NewAntRenewPeriod = 2 * time.Hour

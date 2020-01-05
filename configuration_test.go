@@ -59,6 +59,7 @@ func (s *ConfigurationSuite) TestYAMLParsing(c *C) {
 
 	expected := RecommendedTrackingConfiguration()
 	expected.ExperimentName = "test-configuration"
+	expected.Highlights = &([]int{1, 42, 16})
 	*expected.Detection.Quad.CriticalRadian = 0.17453
 	txt := `
 experiment: test-configuration
@@ -88,6 +89,10 @@ apriltag:
     max-line-mean-square-error: 10
     min-black-white-diff: 50
     deglitch: false
+highlights:
+  - 1
+  - 42
+  - 16
 `
 
 	result := &TrackingConfiguration{}
