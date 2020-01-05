@@ -121,6 +121,7 @@ type CameraConfiguration struct {
 	StrobeDelay    *time.Duration `long:"strobe-delay" description:"delay of the strobe signal (recommended:0us)" yaml:"strobe-delay"`
 	StrobeDuration *time.Duration `long:"strobe-duration" description:"duration of the strobe signal (recommended:1500us)" yaml:"strobe-duration"`
 	FPS            *float64       `long:"f" description:"FPS to use for the experiment (recommended:8.0)" yaml:"fps"`
+	StubPath       *string        `yaml:"stub-path"`
 }
 
 func RecommendedCameraConfiguration() CameraConfiguration {
@@ -128,6 +129,7 @@ func RecommendedCameraConfiguration() CameraConfiguration {
 		StrobeDelay:    new(time.Duration),
 		StrobeDuration: new(time.Duration),
 		FPS:            new(float64),
+		StubPath:       nil,
 	}
 	*res.StrobeDelay = 0
 	*res.StrobeDuration = 1500 * time.Microsecond

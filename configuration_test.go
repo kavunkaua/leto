@@ -17,6 +17,10 @@ var _ = Suite(&ConfigurationSuite{})
 
 func (s *ConfigurationSuite) TestHasADefaultConfiguration(c *C) {
 	config := RecommendedTrackingConfiguration()
+
+	//we allow some of them to be nil
+	config.Camera.StubPath = new(string)
+
 	c.Check(config.CheckAllFieldAreSet(), IsNil)
 }
 
@@ -61,6 +65,9 @@ func (s *ConfigurationSuite) TestYAMLParsing(c *C) {
 	expected.ExperimentName = "test-configuration"
 	expected.Highlights = &([]int{1, 42, 16})
 	*expected.Detection.Quad.CriticalRadian = 0.17453
+
+	expected.Camera.StubPath = nil
+
 	txt := `
 experiment: test-configuration
 legacy-mode: false
