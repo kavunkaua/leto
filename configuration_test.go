@@ -17,10 +17,6 @@ var _ = Suite(&ConfigurationSuite{})
 
 func (s *ConfigurationSuite) TestHasADefaultConfiguration(c *C) {
 	config := RecommendedTrackingConfiguration()
-
-	//we allow some of them to be nil
-	config.Camera.StubPath = new(string)
-
 	c.Check(config.CheckAllFieldAreSet(), IsNil)
 }
 
@@ -66,7 +62,7 @@ func (s *ConfigurationSuite) TestYAMLParsing(c *C) {
 	expected.Highlights = &([]int{1, 42, 16})
 	*expected.Detection.Quad.CriticalRadian = 0.17453
 
-	expected.Camera.StubPath = nil
+	*expected.Camera.StubPath = "foo.png"
 
 	txt := `
 experiment: test-configuration
@@ -84,6 +80,7 @@ camera:
   fps: 8.0
   strobe-delay: 0us
   strobe-duration: 1500us
+  stub-path: foo.png
 apriltag:
   family: 36h11
   quad:

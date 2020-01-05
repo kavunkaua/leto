@@ -336,7 +336,7 @@ func (m *ArtemisManager) Stop() error {
 func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, legacyMode bool) *exec.Cmd {
 	args := []string{}
 
-	if camera.StubPath != nil && len(*camera.StubPath) != 0 {
+	if len(*camera.StubPath) != 0 {
 		args = append(args, "--stub-image-path", *camera.StubPath)
 	}
 

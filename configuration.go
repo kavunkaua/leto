@@ -129,11 +129,12 @@ func RecommendedCameraConfiguration() CameraConfiguration {
 		StrobeDelay:    new(time.Duration),
 		StrobeDuration: new(time.Duration),
 		FPS:            new(float64),
-		StubPath:       nil,
+		StubPath:       new(string),
 	}
 	*res.StrobeDelay = 0
 	*res.StrobeDuration = 1500 * time.Microsecond
 	*res.FPS = 8.0
+	*res.StubPath = ""
 	return res
 }
 
