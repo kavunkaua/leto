@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
+	"github.com/blang/semver"
 	"github.com/formicidae-tracker/hermes"
 	"github.com/formicidae-tracker/leto"
 )
@@ -40,13 +41,44 @@ type ArtemisManager struct {
 	since          time.Time
 }
 
+func CheckArtemisVersion(actual, minimal string) error {
+	a, err := semver.ParseTolerant(actual)
+	if err != nil {
+		return err
+	}
+	m, err := semver.ParseTolerant(minimal)
+	if err != nil {
+		return err
+	}
+
+	if m.Major == 0 {
+		if a.Major != 0 || a.Minor != m.Minor {
+			return fmt.Errorf("Unexpected major version v%d.%d (expected: v%d.%d)", a.Major, a.Minor, m.Major, m.Minor)
+		}
+	} else if m.Major != a.Major {
+		return fmt.Errorf("Unexepected major version v%d (expected v%d)", a.Major, m.Major)
+	}
+
+	if a.GE(m) == false {
+		return fmt.Errorf("Invalid version v%s (minimal: v%s)", a, m)
+	}
+
+	return nil
+}
+
 func NewArtemisManager() (*ArtemisManager, error) {
 	cmd := exec.Command("artemis", "--version")
-	_, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("Could not find artemis: %s", err)
 	}
-	//TODO Check version compatibility"
+
+	artemisVersion := strings.TrimPrefix(strings.TrimSpace(string(output)), "artemis ")
+	err = CheckArtemisVersion(artemisVersion, leto.ARTEMIS_MIN_VERSION)
+	if err != nil {
+		return nil, err
+	}
+
 	//TODO check if slave or master
 	cmd = exec.Command("ffmpeg", "-version")
 	_, err = cmd.CombinedOutput()

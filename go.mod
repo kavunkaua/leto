@@ -2,6 +2,7 @@ module github.com/formicidae-tracker/leto
 
 require (
 	github.com/adrg/xdg v0.0.0-20190319220657-88e5137d2444
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/formicidae-tracker/hermes v0.2.0
 	github.com/golang/protobuf v1.3.2
