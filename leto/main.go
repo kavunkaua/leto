@@ -42,6 +42,8 @@ func (l *Leto) StopTracking(args *leto.TrackingStop, resp *leto.Response) error 
 
 func (l *Leto) Status(args *leto.Status, resp *leto.Status) error {
 	resp.Running, resp.ExperimentName, resp.Since = l.artemis.Status()
+	resp.Master = l.artemis.nodeConfig.Master
+	resp.Slaves = l.artemis.nodeConfig.Slaves
 	return nil
 }
 
