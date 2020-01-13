@@ -67,6 +67,16 @@ func CheckArtemisVersion(actual, minimal string) error {
 	return nil
 }
 
+func extractcoaxlinkFirmwareOutput(output []byte) (string, error) {
+	rx := regexp.MustCompile(`Firmware variant:\W+[0-9]+\W+\(([0-9a-z\-]+)\)`)
+	m := rx.FindStringSubmatch(string(output))
+	if len(m) == 0 {
+		return "", fmt.Errorf("Could not determine firmware variant in output: '%s'", output)
+	}
+	return m[1], nil
+
+}
+
 func GetFirmwareVariant() (string, error) {
 	cmd := exec.Command("coaxlink-firmware")
 	output, err := cmd.CombinedOutput()
@@ -74,12 +84,7 @@ func GetFirmwareVariant() (string, error) {
 		return "", fmt.Errorf("Could not check slave firmware variant")
 	}
 
-	rx := regexp.MustCompile(`Firmware variant:\w+[0-9]+\w+\(([0-9a-z\-]+)\)`)
-	m := rx.FindStringSubmatch(string(output))
-	if len(m) == 0 {
-		return "", fmt.Errorf("Could not determine firmware variant in output: '%s'", output)
-	}
-	return m[1], nil
+	return extractcoaxlinkFirmwareOutput(output)
 }
 
 func CheckFirmwareVariant(c NodeConfiguration, checkMaster bool) error {
