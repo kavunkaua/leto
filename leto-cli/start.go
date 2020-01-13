@@ -27,7 +27,7 @@ func (c *StartCommand) Execute(args []string) error {
 	}
 
 	resp := &leto.Response{}
-	if _, _, err := RunForHost(c.Instance, "Leto.StartTracking", config, resp); err != nil {
+	if _, _, err := leto.RunForHost(c.Instance, "Leto.StartTracking", config, resp); err != nil {
 		return err
 	}
 	return resp.ToError()

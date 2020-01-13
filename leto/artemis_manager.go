@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,7 +27,7 @@ type ArtemisManager struct {
 	quitEncode                        chan struct{}
 	fileWriter                        *FrameReadoutFileWriter
 	trackers                          *RemoteManager
-	isMaster                          bool
+	nodeConfig                        NodeConfiguration
 
 	artemisCmd    *exec.Cmd
 	artemisOut    *io.PipeWriter
@@ -66,6 +67,41 @@ func CheckArtemisVersion(actual, minimal string) error {
 	return nil
 }
 
+func GetFirmwareVariant() (string, error) {
+	cmd := exec.Command("coaxlink-firmware")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("Could not check slave firmware variant")
+	}
+
+	rx := regexp.MustCompile(`Firmware variant:\w+[0-9]+\w+\(([0-9a-z\-]+)\)`)
+	m := rx.FindStringSubmatch(string(output))
+	if len(m) == 0 {
+		return "", fmt.Errorf("Could not determine firmware variant in output: '%s'", output)
+	}
+	return m[1], nil
+}
+
+func CheckFirmwareVariant(c NodeConfiguration, checkMaster bool) error {
+	expected := "1-camera"
+	if c.IsMaster() == false {
+		expected = "1-df-camera"
+	} else if checkMaster == false {
+		return nil
+	}
+
+	variant, err := GetFirmwareVariant()
+	if err != nil {
+		return err
+	}
+
+	if variant != expected {
+		return fmt.Errorf("Unexected firmware variant %s (expected: %s)", variant, expected)
+	}
+
+	return nil
+}
+
 func NewArtemisManager() (*ArtemisManager, error) {
 	cmd := exec.Command("artemis", "--version")
 	output, err := cmd.CombinedOutput()
@@ -79,16 +115,22 @@ func NewArtemisManager() (*ArtemisManager, error) {
 		return nil, err
 	}
 
-	//TODO check if slave or master
 	cmd = exec.Command("ffmpeg", "-version")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("Could not find ffmpeg: %s", err)
 	}
 
+	nodeConfig := GetNodeConfiguration()
+
+	err = CheckFirmwareVariant(nodeConfig, false)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ArtemisManager{
-		isMaster: true,
-		logger:   log.New(os.Stderr, "[artemis] ", log.LstdFlags),
+		nodeConfig: nodeConfig,
+		logger:     log.New(os.Stderr, "[artemis] ", log.LstdFlags),
 	}, nil
 }
 
@@ -112,12 +154,58 @@ func (m *ArtemisManager) ExperimentDir(expname string) (string, error) {
 	return basedir, err
 }
 
-func (*ArtemisManager) LinkHostname(address string) error {
-	return fmt.Errorf("Work balancing with multiple host is not yet implemented")
+func (m *ArtemisManager) SetMaster(hostname string) (err error) {
+	defer func() {
+		if err == nil {
+			m.nodeConfig.Save()
+		}
+	}()
+
+	if len(hostname) == 0 {
+		m.nodeConfig.Master = ""
+		return
+	}
+
+	if len(m.nodeConfig.Slaves) != 0 {
+		err = fmt.Errorf("Cannot set node as slave as it has its own slaves (%s)", m.nodeConfig.Slaves)
+		return
+	}
+	m.nodeConfig.Master = hostname
+	err = CheckFirmwareVariant(m.nodeConfig, true)
+	if err != nil {
+		m.nodeConfig.Master = ""
+	}
+	return
 }
 
-func (*ArtemisManager) UnlinkHostname(address string) error {
-	return fmt.Errorf("Work balancing with multiple host is not yet implemented")
+func (m *ArtemisManager) AddSlave(hostname string) (err error) {
+	defer func() {
+		if err == nil {
+			m.nodeConfig.Save()
+		}
+	}()
+
+	err = m.SetMaster("")
+	if err != nil {
+		return
+	}
+	err = CheckFirmwareVariant(m.nodeConfig, true)
+	if err != nil {
+		return
+	}
+
+	err = m.nodeConfig.AddSlave(hostname)
+	return
+}
+
+func (m *ArtemisManager) RemoveSlave(hostname string) (err error) {
+	defer func() {
+		if err == nil {
+			m.nodeConfig.Save()
+		}
+	}()
+
+	return m.nodeConfig.RemoveSlave(hostname)
 }
 
 func (m *ArtemisManager) LoadDefaultConfig() *leto.TrackingConfiguration {
@@ -271,7 +359,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	if *config.DisplayOnHost == true {
 		m.artemisCmd.Args = append(m.artemisCmd.Args, "-d", "--draw-detection")
 	}
-	if m.isMaster == true {
+	if m.nodeConfig.IsMaster() == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
 		err = os.MkdirAll(dirname, 0755)
 		if err != nil {
@@ -400,7 +488,7 @@ func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int
 		args = append(args, "--at-quad-deglitch")
 	}
 
-	if m.isMaster == true {
+	if m.nodeConfig.IsMaster() == true {
 		args = append(args, "--video-to-stdout")
 		args = append(args, "--video-output-height", "1080")
 		args = append(args, "--video-output-add-header")

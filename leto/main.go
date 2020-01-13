@@ -45,6 +45,83 @@ func (l *Leto) Status(args *leto.Status, resp *leto.Status) error {
 	return nil
 }
 
+func (l *Leto) Link(args *leto.Link, resp *leto.Response) error {
+	var err error = nil
+	defer func() {
+		resp.Error = ""
+		if err != nil {
+			resp.Error = err.Error()
+		}
+	}()
+	host, err := os.Hostname()
+	if err != nil {
+		return nil
+	}
+
+	host = "leto." + host
+
+	if args.Master != host || args.Slave != host {
+		err = fmt.Errorf("Host %s is neither master (%s) or slave (%s)", host, args.Master, args.Slave)
+		return nil
+	}
+
+	if args.Slave == host {
+		err = l.artemis.SetMaster(args.Master)
+		return nil
+	}
+	respSlave := leto.Response{}
+	_, _, err = leto.RunForHost(args.Slave, "Leto.Link", args, &respSlave)
+	if err != nil {
+		return nil
+	}
+	err = respSlave.ToError()
+	if err != nil {
+		return nil
+	}
+
+	err = l.artemis.AddSlave(args.Slave)
+	return nil
+}
+
+func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
+	var err error = nil
+	defer func() {
+		resp.Error = ""
+		if err != nil {
+			resp.Error = err.Error()
+		}
+	}()
+	host, err := os.Hostname()
+	if err != nil {
+		return nil
+	}
+
+	host = "leto." + host
+
+	if args.Master != host || args.Slave != host {
+		err = fmt.Errorf("Host %s is neither master (%s) or slave (%s)", host, args.Master, args.Slave)
+		return nil
+	}
+
+	if args.Slave == host {
+		err = l.artemis.SetMaster("")
+		return nil
+	}
+
+	err = l.artemis.RemoveSlave(args.Slave)
+	if err != nil {
+		return nil
+	}
+
+	respSlave := leto.Response{}
+	_, _, err = leto.RunForHost(args.Slave, "Leto.Unlink", args, &respSlave)
+	if err != nil {
+		return nil
+	}
+	err = respSlave.ToError()
+	return nil
+}
+
 func Execute() error {
 	host, err := os.Hostname()
 	if err != nil {

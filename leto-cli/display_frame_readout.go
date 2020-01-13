@@ -39,7 +39,7 @@ func (d *FrameReadoutDisplayer) DisplayFrameReadout(h *hermes.FrameReadout) stri
 
 func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
 	resp := &leto.Status{}
-	hostname, _, err := RunForHost(c.Instance, "Leto.Status", resp, resp)
+	hostname, _, err := leto.RunForHost(c.Instance, "Leto.Status", resp, resp)
 	if err != nil {
 		return fmt.Errorf("Could not find  instance '%s'", c.Instance)
 	}

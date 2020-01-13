@@ -33,9 +33,11 @@ type TrackingStop struct {
 }
 
 type Link struct {
-	Hostname string
+	Master string
+	Slave  string
 }
 
 type Unlink struct {
-	Hostname string
+	Master string
+	Slave  string
 }

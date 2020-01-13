@@ -13,7 +13,7 @@ var stopCommand = &StopCommand{}
 func (c *StopCommand) Execute([]string) error {
 	resp := &leto.Response{}
 	args := &leto.TrackingStop{}
-	if _, _, err := RunForHost(c.Instance, "Leto.StopTracking", args, resp); err != nil {
+	if _, _, err := leto.RunForHost(c.Instance, "Leto.StopTracking", args, resp); err != nil {
 		return err
 	}
 	return resp.ToError()
