@@ -73,12 +73,12 @@ func (c *ScanCommand) Execute(args []string) error {
 		since := "N.A."
 		links := ""
 		if len(r.Status.Master) != 0 {
-			links = "↦" + strings.TrimPrefix(r.Status.Master, "leto.")
+			links = "↦ " + strings.TrimPrefix(r.Status.Master, "leto.")
 		} else if len(r.Status.Slaves) != 0 {
-			sep := ""
+			sep := "↤ "
 			for _, s := range r.Status.Slaves {
-				links += sep + strings.TrimPrefix(s, "leto.") + "↦"
-				sep = ","
+				links += sep + strings.TrimPrefix(s, "leto.")
+				sep = ",↤ "
 			}
 		}
 		if r.Status.Running == true {
