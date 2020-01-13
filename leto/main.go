@@ -62,7 +62,7 @@ func (l *Leto) Link(args *leto.Link, resp *leto.Response) error {
 
 	host = "leto." + host
 
-	if args.Master != host || args.Slave != host {
+	if args.Master != host && args.Slave != host {
 		err = fmt.Errorf("Host %s is neither master (%s) or slave (%s)", host, args.Master, args.Slave)
 		return nil
 	}
@@ -100,7 +100,7 @@ func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
 
 	host = "leto." + host
 
-	if args.Master != host || args.Slave != host {
+	if args.Master != host && args.Slave != host {
 		err = fmt.Errorf("Host %s is neither master (%s) or slave (%s)", host, args.Master, args.Slave)
 		return nil
 	}
