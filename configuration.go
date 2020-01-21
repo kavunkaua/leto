@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
-	"os"
 	"reflect"
 	"time"
 
@@ -21,7 +20,7 @@ func MergeConfiguration(from, to interface{}) error {
 		return fmt.Errorf("Configuration can only be merged through pointers")
 	}
 
-	if reflect.ValueOf(to).IsNil() == true {
+	if reflect.ValueOf(from).IsNil() == true {
 		return fmt.Errorf("Cannot merge from nil configuration")
 	}
 
@@ -242,12 +241,7 @@ func (c *TrackingConfiguration) CheckAllFieldAreSet() error {
 }
 
 func ReadConfiguration(filename string) (*TrackingConfiguration, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Could not open '%s': %s", filename, err)
-	}
-	defer f.Close()
-	txt, err := ioutil.ReadAll(f)
+	txt, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("Could not read '%s': %s", filename, err)
 	}
