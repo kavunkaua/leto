@@ -220,6 +220,11 @@ func (from *TrackingConfiguration) Merge(to *TrackingConfiguration) error {
 	if len(to.ExperimentName) > 0 {
 		from.ExperimentName = to.ExperimentName
 	}
+	if from.Loads == nil && to.Loads != nil {
+		from.Loads = &LoadBalancing{}
+		*from.Loads = *to.Loads
+	}
+
 	return MergeConfiguration(from, to)
 }
 

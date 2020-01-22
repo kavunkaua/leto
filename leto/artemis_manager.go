@@ -291,7 +291,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		return fmt.Errorf("could not merge user configuration: %s", err)
 	}
 
-	if m.nodeConfig.IsMaster() {
+	if m.nodeConfig.IsMaster() == true {
 		config.Loads = GenerateLoadBalancing(m.nodeConfig)
 	}
 
