@@ -293,6 +293,22 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	if m.nodeConfig.IsMaster() == true {
 		config.Loads = GenerateLoadBalancing(m.nodeConfig)
+		if len(m.nodeConfig.Slaves) > 0 {
+			cmd := exec.Command("artemis", "--fetch-resolution")
+
+			if config.Camera.StubPath != nil || len(*config.Camera.StubPath) > 0 {
+				cmd.Args = append(cmd.Args, "--stub-image-path", *config.Camera.StubPath)
+			}
+
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("Could not determine camera resolution")
+			}
+			_, err = fmt.Sscanf(string(out), "%d %d", &config.Loads.Width, &config.Loads.Height)
+			if err != nil {
+				return fmt.Errorf("Could not parse camera resolution in '%s'", out)
+			}
+		}
 	}
 
 	if err := config.CheckAllFieldAreSet(); err != nil {
@@ -442,7 +458,11 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		go m.streamManager.EncodeAndStreamMuxedStream(m.streamIn)
 	} else {
 		m.artemisCmd.Stdout = nil
+		m.artemisCmd.Args = append(m.artemisCmd.Args,
+			"--camera-slave-width", fmt.Sprintf("%d", config.Loads.Width),
+			"--camera-slave-height", fmt.Sprintf("%d", config.Loads.Height))
 	}
+
 	m.logger.Printf("Starting tracking for '%s'", config.ExperimentName)
 	m.experimentName = config.ExperimentName
 	m.since = time.Now()

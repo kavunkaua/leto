@@ -68,8 +68,8 @@ func (s *ConfigurationSuite) TestCanBeMerged(c *C) {
 	*to.Detection.Quad.MinBWDiff = 120
 	*expected.Detection.Quad.MinBWDiff = 120
 
-	to.Loads = &LoadBalancing{"single-node", map[string]string{"localhost": "single-node"}, map[int]string{0: "single-node"}}
-	expected.Loads = &LoadBalancing{"single-node", map[string]string{"localhost": "single-node"}, map[int]string{0: "single-node"}}
+	to.Loads = &LoadBalancing{"single-node", map[string]string{"localhost": "single-node"}, map[int]string{0: "single-node"}, 640, 480}
+	expected.Loads = &LoadBalancing{"single-node", map[string]string{"localhost": "single-node"}, map[int]string{0: "single-node"}, 640, 480}
 
 	c.Assert(from.Merge(to), IsNil)
 	c.Check(from, DeepEquals, expected)

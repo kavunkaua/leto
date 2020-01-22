@@ -170,9 +170,10 @@ func (from *StreamConfiguration) Merge(to *StreamConfiguration) error {
 }
 
 type LoadBalancing struct {
-	SelfUUID     string            `yaml:"self-UUID"`
-	UUIDs        map[string]string `yaml:"UUIDs"`
-	Assignements map[int]string    `yaml:"assignation"`
+	SelfUUID      string            `yaml:"self-UUID"`
+	UUIDs         map[string]string `yaml:"UUIDs"`
+	Assignements  map[int]string    `yaml:"assignation"`
+	Width, Height int
 }
 
 type TrackingConfiguration struct {
