@@ -11,7 +11,7 @@ type LinkingOptions struct {
 }
 
 var linkCommand = &LinkingOptions{command: "Leto.Link"}
-var unlinkCommand = &LinkingOptions{command: "leto.Unlink"}
+var unlinkCommand = &LinkingOptions{command: "Leto.Unlink"}
 
 func (c *LinkingOptions) Execute(args []string) error {
 	argsL := leto.Link{

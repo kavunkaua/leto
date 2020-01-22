@@ -18,6 +18,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/formicidae-tracker/hermes"
 	"github.com/formicidae-tracker/leto"
+	"github.com/google/uuid"
 )
 
 type ArtemisManager struct {
@@ -237,6 +238,46 @@ func (m *ArtemisManager) LoadDefaultConfig() *leto.TrackingConfiguration {
 	return &res
 }
 
+func GenerateLoadBalancing(c NodeConfiguration) *leto.LoadBalancing {
+	if len(c.Slaves) == 0 {
+		return &leto.LoadBalancing{
+			SelfUUID:     "single-node",
+			UUIDs:        map[string]string{"localhost": "single-node"},
+			Assignements: map[int]string{0: "single-node"},
+		}
+	}
+	res := &leto.LoadBalancing{
+		SelfUUID:     uuid.New().String(),
+		UUIDs:        make(map[string]string),
+		Assignements: make(map[int]string),
+	}
+	res.UUIDs["localhost"] = res.SelfUUID
+	res.Assignements[0] = res.SelfUUID
+	for i, s := range c.Slaves {
+		uuid := uuid.New().String()
+		res.UUIDs[s] = uuid
+		res.Assignements[i+1] = uuid
+	}
+	return res
+}
+
+func BuildWorkloadBalance(lb *leto.LoadBalancing, FPS float64) *WorkloadBalance {
+	wb := &WorkloadBalance{
+		FPS:       FPS,
+		Stride:    len(lb.Assignements),
+		IDsByUUID: make(map[string][]bool),
+	}
+
+	for id, uuid := range lb.Assignements {
+		if _, ok := wb.IDsByUUID[uuid]; ok == false {
+			wb.IDsByUUID[uuid] = make([]bool, len(lb.Assignements))
+		}
+		wb.IDsByUUID[uuid][id] = true
+
+	}
+	return wb
+}
+
 func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
@@ -248,6 +289,10 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	if err := config.Merge(userConfig); err != nil {
 		return fmt.Errorf("could not merge user configuration: %s", err)
+	}
+
+	if m.nodeConfig.IsMaster() {
+		config.Loads = GenerateLoadBalancing(m.nodeConfig)
 	}
 
 	if err := config.CheckAllFieldAreSet(); err != nil {
@@ -266,9 +311,13 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	}
 
 	m.incoming = make(chan *hermes.FrameReadout, 10)
-	m.merged = make(chan *hermes.FrameReadout, 10)
-	m.file = make(chan *hermes.FrameReadout, 200)
-	m.broadcast = make(chan *hermes.FrameReadout, 10)
+
+	if m.nodeConfig.IsMaster() == true {
+		m.merged = make(chan *hermes.FrameReadout, 10)
+		m.file = make(chan *hermes.FrameReadout, 200)
+		m.broadcast = make(chan *hermes.FrameReadout, 10)
+	}
+
 	var err error
 	m.experimentDir, err = m.ExperimentDir(config.ExperimentName)
 	if err != nil {
@@ -286,65 +335,66 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		return err
 	}
 
-	m.fileWriter, err = NewFrameReadoutWriter(filepath.Join(m.experimentDir, "tracking.hermes"))
-	if err != nil {
-		return err
-	}
+	wb := BuildWorkloadBalance(config.Loads, *config.Camera.FPS)
 
-	m.trackers = NewRemoteManager()
-	//TODO actually write the workloadbalance and different definitions
-	wb := &WorkloadBalance{
-		FPS:       *config.Camera.FPS,
-		Stride:    1,
-		IDsByUUID: map[string][]bool{"foo": []bool{true}},
-	}
-	m.wg.Add(1)
-	go func() {
-		for i := range m.merged {
-			select {
-			case m.file <- i:
-			default:
-			}
-			select {
-			case m.broadcast <- i:
-			default:
-			}
-		}
-		close(m.file)
-		close(m.broadcast)
-		m.wg.Done()
-	}()
-	m.wg.Add(1)
-	go func() {
-		MergeFrameReadout(wb, m.incoming, m.merged)
-		m.wg.Done()
-	}()
-	m.wg.Add(1)
-	go func() {
-		err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), m.OnAccept(), func() {
-			m.logger.Printf("All connection closed, cleaning up experiment")
-			close(m.incoming)
-			m.mx.Lock()
-			defer m.mx.Unlock()
-			m.incoming = nil
-		})
+	if m.nodeConfig.IsMaster() == true {
+		m.fileWriter, err = NewFrameReadoutWriter(filepath.Join(m.experimentDir, "tracking.hermes"))
 		if err != nil {
-			m.logger.Printf("listening for tracker unhandled error: %s", err)
+			return err
 		}
-		m.wg.Done()
-	}()
-	m.wg.Add(1)
-	go func() {
-		BroadcastFrameReadout(fmt.Sprintf(":%d", leto.ARTEMIS_OUT_PORT),
-			m.broadcast,
-			3*time.Duration(1.0e6/(*config.Camera.FPS))*time.Microsecond)
-		m.wg.Done()
-	}()
-	m.wg.Add(1)
-	go func() {
-		m.fileWriter.WriteAll(m.file)
-		m.wg.Done()
-	}()
+
+		m.trackers = NewRemoteManager()
+
+		m.wg.Add(1)
+		go func() {
+			for i := range m.merged {
+				select {
+				case m.file <- i:
+				default:
+				}
+				select {
+				case m.broadcast <- i:
+				default:
+				}
+			}
+			close(m.file)
+			close(m.broadcast)
+			m.wg.Done()
+		}()
+
+		m.wg.Add(1)
+		go func() {
+			MergeFrameReadout(wb, m.incoming, m.merged)
+			m.wg.Done()
+		}()
+
+		m.wg.Add(1)
+		go func() {
+			err := m.trackers.Listen(fmt.Sprintf(":%d", leto.ARTEMIS_IN_PORT), m.OnAccept(), func() {
+				m.logger.Printf("All connection closed, cleaning up experiment")
+				close(m.incoming)
+				m.mx.Lock()
+				defer m.mx.Unlock()
+				m.incoming = nil
+			})
+			if err != nil {
+				m.logger.Printf("listening for tracker unhandled error: %s", err)
+			}
+			m.wg.Done()
+		}()
+		m.wg.Add(1)
+		go func() {
+			BroadcastFrameReadout(fmt.Sprintf(":%d", leto.ARTEMIS_OUT_PORT),
+				m.broadcast,
+				3*time.Duration(1.0e6/(*config.Camera.FPS))*time.Microsecond)
+			m.wg.Done()
+		}()
+		m.wg.Add(1)
+		go func() {
+			m.fileWriter.WriteAll(m.file)
+			m.wg.Done()
+		}()
+	}
 
 	logFilePath := filepath.Join(m.experimentDir, "artemis.command")
 	artemisCommandLog, err := os.Create(logFilePath)
@@ -353,7 +403,11 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	}
 	defer artemisCommandLog.Close()
 
-	m.artemisCmd = m.TrackingMasterTrackingCommand("localhost", leto.ARTEMIS_IN_PORT, "foo", config.Camera, config.Detection, *config.LegacyMode)
+	targetHost := "localhost"
+	if m.nodeConfig.IsMaster() == false {
+		targetHost = m.nodeConfig.Master
+	}
+	m.artemisCmd = m.TrackingCommand(targetHost, leto.ARTEMIS_IN_PORT, config.Loads.SelfUUID, config.Camera, config.Detection, *config.LegacyMode, wb)
 	m.artemisCmd.Stderr = nil
 	m.artemisCmd.Args = append(m.artemisCmd.Args, "--log-output-dir", m.experimentDir)
 	m.artemisCmd.Stdin = nil
@@ -393,6 +447,22 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 	m.experimentName = config.ExperimentName
 	m.since = time.Now()
 	fmt.Fprintf(artemisCommandLog, "%s %s\n", m.artemisCmd.Path, m.artemisCmd.Args)
+
+	if m.nodeConfig.IsMaster() {
+		//Starts all slaves
+		for _, s := range m.nodeConfig.Slaves {
+			slaveConfig := *config
+			slaveConfig.Loads.SelfUUID = slaveConfig.Loads.UUIDs[s]
+			resp := leto.Response{}
+			_, _, err := leto.RunForHost(s, "Leto.StartTracking", &slaveConfig, &resp)
+			if err == nil {
+				err = resp.ToError()
+			}
+			if err != nil {
+				m.logger.Printf("Could not start slave %s: %s", s, err)
+			}
+		}
+	}
 
 	m.artemisWg.Add(1)
 	go func() {
@@ -453,6 +523,19 @@ func (m *ArtemisManager) Stop() error {
 	}
 
 	if m.artemisCmd != nil {
+		if m.nodeConfig.IsMaster() == true {
+			for _, s := range m.nodeConfig.Slaves {
+				resp := leto.Response{}
+				_, _, err := leto.RunForHost(s, "Leto.StopTracking", &leto.TrackingStop{}, &resp)
+				if err == nil {
+					err = resp.ToError()
+				}
+				if err != nil {
+					m.logger.Printf("Could not stop slave %s: %s", s, err)
+				}
+			}
+		}
+
 		m.artemisCmd.Process.Signal(os.Interrupt)
 		m.logger.Printf("Waiting for artemis process to stop")
 		m.artemisCmd = nil
@@ -464,7 +547,7 @@ func (m *ArtemisManager) Stop() error {
 	return nil
 }
 
-func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, legacyMode bool) *exec.Cmd {
+func (m *ArtemisManager) TrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, legacyMode bool, wb *WorkloadBalance) *exec.Cmd {
 	args := []string{}
 
 	if len(*camera.StubPath) != 0 {
@@ -503,6 +586,18 @@ func (m *ArtemisManager) TrackingMasterTrackingCommand(hostname string, port int
 		args = append(args, "--video-to-stdout")
 		args = append(args, "--video-output-height", "1080")
 		args = append(args, "--video-output-add-header")
+	}
+
+	if len(wb.IDsByUUID) > 1 {
+		args = append(args, "--frame-stride", fmt.Sprintf("%d", len(wb.IDsByUUID)))
+		ids := []string{}
+		for i, isSet := range wb.IDsByUUID[UUID] {
+			if isSet == false {
+				continue
+			}
+			ids = append(ids, fmt.Sprintf("%d", i))
+		}
+		args = append(args, "--frame-ids", strings.Join(ids, ","))
 	}
 
 	cmd := exec.Command("artemis", args...)

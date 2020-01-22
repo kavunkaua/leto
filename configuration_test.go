@@ -34,6 +34,7 @@ var _ = Suite(&ConfigurationSuite{})
 
 func (s *ConfigurationSuite) TestHasADefaultConfiguration(c *C) {
 	config := RecommendedTrackingConfiguration()
+	config.Loads = &LoadBalancing{}
 	c.Check(config.CheckAllFieldAreSet(), IsNil)
 }
 

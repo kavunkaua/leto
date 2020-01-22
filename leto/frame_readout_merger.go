@@ -98,7 +98,7 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 	//we reserve a large value, but with tiemout we should have no relocation
 	buffer := make(ReadoutBuffer, 0, 10*wb.Stride)
 	betweenFrame := time.Duration(1.0e9/wb.FPS) * time.Nanosecond
-	timeout := time.Duration(wb.Stride+2) * betweenFrame
+	timeout := time.Duration(2*wb.Stride+2) * betweenFrame
 
 	logger := log.New(os.Stderr, "[FrameReadoutMerger] ", log.LstdFlags)
 	for {

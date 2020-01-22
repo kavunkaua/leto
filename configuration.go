@@ -169,6 +169,12 @@ func (from *StreamConfiguration) Merge(to *StreamConfiguration) error {
 	return MergeConfiguration(from, to)
 }
 
+type LoadBalancing struct {
+	SelfUUID     string            `yaml:"self-UUID"`
+	UUIDs        map[string]string `yaml:"UUIDs"`
+	Assignements map[int]string    `yaml:"assignation"`
+}
+
 type TrackingConfiguration struct {
 	ExperimentName      string                    `short:"e" long:"experiment" description:"Name of the experiment to run" yaml:"experiment"`
 	DisplayOnHost       *bool                     `long:"display-on-host" description:"Opens a window and display on host the data" yaml:"host-display"`
@@ -179,6 +185,7 @@ type TrackingConfiguration struct {
 	Camera              CameraConfiguration       `yaml:"camera"`
 	Detection           TagDetectionConfiguration `yaml:"apriltag"`
 	Highlights          *[]int                    `yaml:"highlights"`
+	Loads               *LoadBalancing            `yaml:"load-balancing"`
 }
 
 func RecommendedTrackingConfiguration() TrackingConfiguration {
