@@ -476,15 +476,19 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		}
 		m.artemisCmd = nil
 		//Stops the reading of frame readout, it will close all the chain
-		err = m.trackers.Close()
-		if err != nil {
-			m.logger.Printf("Could not close connections: %s", err)
+		if m.trackers != nil {
+			err = m.trackers.Close()
+			if err != nil {
+				m.logger.Printf("Could not close connections: %s", err)
+			}
 		}
 
 		log.Printf("Waiting for all connection to be closed")
 		m.mx.Unlock()
 		m.wg.Wait()
-		m.fileWriter.Close()
+		if m.fileWriter != nil {
+			m.fileWriter.Close()
+		}
 		m.mx.Lock()
 
 		if m.streamManager != nil {
