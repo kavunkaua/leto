@@ -60,9 +60,11 @@ func (s *RemoteManagerSuite) TestManager(c *C) {
 	close(quit)
 	wg.Wait()
 	c.Check(m.Close(), IsNil)
+	m.mx.Lock()
 	for _, conn := range m.connections {
 		c.Check(conn, IsNil)
 	}
+	m.mx.Unlock()
 	_, ok := <-readouts
 	c.Check(ok, Equals, false)
 
