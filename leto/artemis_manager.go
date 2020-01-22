@@ -57,7 +57,7 @@ func CheckArtemisVersion(actual, minimal string) error {
 			return fmt.Errorf("Unexpected major version v%d.%d (expected: v%d.%d)", a.Major, a.Minor, m.Major, m.Minor)
 		}
 	} else if m.Major != a.Major {
-		return fmt.Errorf("Unexepected major version v%d (expected v%d)", a.Major, m.Major)
+		return fmt.Errorf("Unexpected major version v%d (expected: v%d)", a.Major, m.Major)
 	}
 
 	if a.GE(m) == false {
@@ -77,7 +77,7 @@ func extractcoaxlinkFirmwareOutput(output []byte) (string, error) {
 
 }
 
-func GetFirmwareVariant() (string, error) {
+func getFirmwareVariant() (string, error) {
 	cmd := exec.Command("coaxlink-firmware")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -87,7 +87,7 @@ func GetFirmwareVariant() (string, error) {
 	return extractcoaxlinkFirmwareOutput(output)
 }
 
-func CheckFirmwareVariant(c NodeConfiguration, checkMaster bool) error {
+func CheckFirmwareVariant(c NodeConfiguration, variant string, checkMaster bool) error {
 	expected := "1-camera"
 	if c.IsMaster() == false {
 		expected = "1-df-camera"
@@ -95,16 +95,22 @@ func CheckFirmwareVariant(c NodeConfiguration, checkMaster bool) error {
 		return nil
 	}
 
-	variant, err := GetFirmwareVariant()
-	if err != nil {
-		return err
-	}
-
 	if variant != expected {
-		return fmt.Errorf("Unexected firmware variant %s (expected: %s)", variant, expected)
+		return fmt.Errorf("Unexpected firmware variant %s (expected: %s)", variant, expected)
 	}
 
 	return nil
+}
+
+func getAndCheckFirmwareVariant(c NodeConfiguration, checkMaster bool) error {
+	variant, err := getFirmwareVariant()
+	if err != nil {
+		if c.IsMaster() && checkMaster == false {
+			return nil
+		}
+		return err
+	}
+	return CheckFirmwareVariant(c, variant, checkMaster)
 }
 
 func NewArtemisManager() (*ArtemisManager, error) {
@@ -128,7 +134,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 
 	nodeConfig := GetNodeConfiguration()
 
-	err = CheckFirmwareVariant(nodeConfig, false)
+	err = getAndCheckFirmwareVariant(nodeConfig, false)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +182,7 @@ func (m *ArtemisManager) SetMaster(hostname string) (err error) {
 		return
 	}
 	m.nodeConfig.Master = hostname
-	err = CheckFirmwareVariant(m.nodeConfig, true)
+	err = getAndCheckFirmwareVariant(m.nodeConfig, true)
 	if err != nil {
 		m.nodeConfig.Master = ""
 	}
@@ -194,7 +200,7 @@ func (m *ArtemisManager) AddSlave(hostname string) (err error) {
 	if err != nil {
 		return
 	}
-	err = CheckFirmwareVariant(m.nodeConfig, true)
+	err = getAndCheckFirmwareVariant(m.nodeConfig, true)
 	if err != nil {
 		return
 	}

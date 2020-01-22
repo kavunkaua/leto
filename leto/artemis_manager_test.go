@@ -30,4 +30,106 @@ func (s *ArtemisManagerSuite) TestCanExtractVariantFromUpdateToolOutput(c *C) {
 	res, err := extractcoaxlinkFirmwareOutput([]byte(txt))
 	c.Assert(err, IsNil)
 	c.Check(res, Equals, "1-df-camera")
+	res, err = extractcoaxlinkFirmwareOutput([]byte(""))
+	c.Check(err, ErrorMatches, `Could not determine firmware variant in output: ''`)
+	c.Check(res, Equals, "")
+}
+
+func (s *ArtemisManagerSuite) TestCanCheckVersion(c *C) {
+	testdata := []struct {
+		Actual, Minimal string
+		Expected        string
+	}{
+		{
+			"v1.2.3", "v1.2.3",
+			``,
+		},
+		{
+			"v1.3.3", "v1.2.3",
+			``,
+		},
+		{
+			"v0.3.3", "v0.3.2",
+			``,
+		},
+		{
+			"v1.2.3.4", "v1.2.3",
+			`Invalid character\(s\) found in patch number ".*"`,
+		},
+		{
+			"v1.2.3", "v1.2.3.4",
+			`Invalid character\(s\) found in patch number ".*"`,
+		},
+		{
+			"v0.3.3", "v0.2.4",
+			`Unexpected major version v0.3 \(expected: v0.2\)`,
+		},
+		{
+			"v2.3.3", "v1.2.4",
+			`Unexpected major version v2 \(expected: v1\)`,
+		},
+		{
+			"v2.3.3", "v2.3.4",
+			`Invalid version v2.3.3 \(minimal: v2.3.4\)`,
+		},
+	}
+
+	for _, d := range testdata {
+		err := CheckArtemisVersion(d.Actual, d.Minimal)
+		if len(d.Expected) == 0 {
+			c.Check(err, IsNil)
+			continue
+		}
+		c.Check(err, ErrorMatches, d.Expected)
+	}
+}
+
+func (s *ArtemisManagerSuite) TestCheckFirmwareVariant(c *C) {
+	testdata := []struct {
+		C           NodeConfiguration
+		Variant     string
+		CheckMaster bool
+		Expected    string
+	}{
+		{
+			//if not checking master, could even not have a firmware variant
+		},
+		{
+			CheckMaster: true,
+			Expected:    `Unexpected firmware variant  \(expected: 1-camera\)`,
+		},
+		{
+			Variant:     "1-df-camera",
+			CheckMaster: true,
+			Expected:    `Unexpected firmware variant 1-df-camera \(expected: 1-camera\)`,
+		},
+		{
+			Variant:     "1-camera",
+			CheckMaster: true,
+		},
+		{
+			C:        NodeConfiguration{Master: "foo"},
+			Variant:  "",
+			Expected: `Unexpected firmware variant  \(expected: 1-df-camera\)`,
+		},
+		{
+			C:           NodeConfiguration{Master: "foo"},
+			CheckMaster: true,
+			Variant:     "1-camera",
+			Expected:    `Unexpected firmware variant 1-camera \(expected: 1-df-camera\)`,
+		},
+		{
+			C:       NodeConfiguration{Master: "foo"},
+			Variant: "1-df-camera",
+		},
+	}
+
+	for _, d := range testdata {
+		err := CheckFirmwareVariant(d.C, d.Variant, d.CheckMaster)
+		if len(d.Expected) == 0 {
+			c.Check(err, IsNil)
+			continue
+		}
+		c.Check(err, ErrorMatches, d.Expected)
+	}
 }

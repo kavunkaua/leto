@@ -40,7 +40,7 @@ func (s *FrameReadoutBroadcasterSuite) TestNatsyDisconnectingClientMustNotPanic(
 		},
 	}
 	deadline := time.Now().Add(1 * time.Millisecond)
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		for _, d := range testdata {
 			conn, err := net.Dial("tcp", "localhost:4002")
 			c.Assert(err, IsNil)
@@ -55,7 +55,6 @@ func (s *FrameReadoutBroadcasterSuite) TestNatsyDisconnectingClientMustNotPanic(
 			ro := hermes.FrameReadout{}
 			ok, err = hermes.ReadDelimitedMessage(conn, &ro)
 			conn.Close()
-
 		}
 	}
 
