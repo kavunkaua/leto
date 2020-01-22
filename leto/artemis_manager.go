@@ -451,7 +451,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 			"--ant-renew-period-hour", fmt.Sprintf("%f", config.NewAntRenewPeriod.Hours()))
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
-		m.streamManager, err = NewStreamManager(m.experimentDir, *config.Camera.FPS, config.Stream)
+		m.streamManager, err = NewStreamManager(m.experimentDir, *config.Camera.FPS/float64(wb.Stride), config.Stream)
 		if err != nil {
 			return err
 		}
