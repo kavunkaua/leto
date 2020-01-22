@@ -405,7 +405,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	targetHost := "localhost"
 	if m.nodeConfig.IsMaster() == false {
-		targetHost = m.nodeConfig.Master
+		targetHost = strings.TrimPrefix(m.nodeConfig.Master, "leto.") + ".local"
 	}
 	m.artemisCmd = m.TrackingCommand(targetHost, leto.ARTEMIS_IN_PORT, config.Loads.SelfUUID, config.Camera, config.Detection, *config.LegacyMode, wb)
 	m.artemisCmd.Stderr = nil
