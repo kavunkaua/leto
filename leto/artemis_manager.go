@@ -301,7 +301,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 			}
 
 			out, err := cmd.CombinedOutput()
-			if err != nil && err.Error() != "signal: segmentation fault (core dumped)" {
+			if err != nil {
 				return fmt.Errorf("Could not determine camera resolution: %s", err)
 			}
 			_, err = fmt.Sscanf(string(out), "%d %d", &config.Loads.Width, &config.Loads.Height)
