@@ -1,12 +1,15 @@
 # Leto: Vision Tacking management for the FORmicidae Tracker
 
 This directory contains two tools :
+ *  `leto-cli` a small command line tool that could be installed on
+    any computer and used to manage leto instances on a local
+    network. This is the tool most user want to install.
  * `leto` : a tool used to manage ann artemis process for the tracking
    of ants, it is installed on atracking computer as a service. Its
    administration is managed by the [FORT ansible
-   script](https://github.com/formicidae-tracker/fort-configuration).
- *  `leto-cli` a small command line tool that could be installed on
-    any computer and used to manage leto instances on a local network.
+   script](https://github.com/formicidae-tracker/fort-configuration). Apart
+   for system administrator user should not install nor use it
+   directly.
 
 ## Leto-cli installation and upgrade
 
