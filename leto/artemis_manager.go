@@ -263,9 +263,10 @@ func GenerateLoadBalancing(c NodeConfiguration) *leto.LoadBalancing {
 
 func BuildWorkloadBalance(lb *leto.LoadBalancing, FPS float64) *WorkloadBalance {
 	wb := &WorkloadBalance{
-		FPS:       FPS,
-		Stride:    len(lb.Assignements),
-		IDsByUUID: make(map[string][]bool),
+		FPS:        FPS,
+		MasterUUID: lb.UUIDs["localhost"],
+		Stride:     len(lb.Assignements),
+		IDsByUUID:  make(map[string][]bool),
 	}
 
 	for id, uuid := range lb.Assignements {
