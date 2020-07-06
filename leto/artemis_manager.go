@@ -431,7 +431,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	tags := make([]string, 0, len(*config.Highlights))
 	for _, id := range *config.Highlights {
-		tags = append(tags, strconv.Itoa(id))
+		tags = append(tags, "0x"+strconv.FormatUint(uint64(id), 16))
 	}
 
 	if len(tags) != 0 {
