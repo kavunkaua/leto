@@ -13,6 +13,8 @@ type Status struct {
 	Running        bool
 	Since          time.Time
 	ExperimentName string
+	Slaves         []string
+	Master         string
 }
 
 func (r Response) ToError() error {
@@ -33,9 +35,11 @@ type TrackingStop struct {
 }
 
 type Link struct {
-	Hostname string
+	Master string
+	Slave  string
 }
 
 type Unlink struct {
-	Hostname string
+	Master string
+	Slave  string
 }

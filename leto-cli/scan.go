@@ -64,19 +64,29 @@ func (c *ScanCommand) Execute(args []string) error {
 		}
 	}()
 
-	formatStr := "%20s | %7s | %20s | %s\n"
-	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since")
+	formatStr := "%20s | %7s | %20s | %20s | %s\n"
+	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since", "Links")
 	fmt.Fprintf(os.Stdout, "--------------------------------------------------------------------------------\n")
 	for r := range statuses {
 		s := "Idle"
 		exp := "N.A."
 		since := "N.A."
+		links := ""
+		if len(r.Status.Master) != 0 {
+			links = "↦ " + strings.TrimPrefix(r.Status.Master, "leto.")
+		} else if len(r.Status.Slaves) != 0 {
+			sep := "↤ "
+			for _, s := range r.Status.Slaves {
+				links += sep + strings.TrimPrefix(s, "leto.")
+				sep = ",↤ "
+			}
+		}
 		if r.Status.Running == true {
 			s = "Running"
 			exp = r.Status.ExperimentName
 			since = r.Status.Since.Format("Mon Jan 2 15:04:05")
 		}
-		fmt.Fprintf(os.Stdout, formatStr, r.Instance, s, exp, since)
+		fmt.Fprintf(os.Stdout, formatStr, r.Instance, s, exp, since, links)
 	}
 	return nil
 }

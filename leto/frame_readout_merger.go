@@ -11,13 +11,30 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-type WorkloadBalance struct {
-	FPS       float64
-	Stride    int
-	IDsByUUID map[string][]bool
+type synchronizationPoint struct {
+	time        time.Time
+	timestampUS int64
 }
 
-func (wb WorkloadBalance) Check() error {
+func (p synchronizationPoint) computeOffset(t time.Time, timestampUs int64) float64 {
+	return float64(p.timestampUS) + float64(t.Sub(p.time).Nanoseconds())*1.0e-3 - float64(timestampUs)
+}
+
+type WorkloadBalance struct {
+	FPS        float64
+	Stride     int
+	MasterUUID string
+	lastPoint  *synchronizationPoint
+	offsets    map[string]float64
+	IDsByUUID  map[string][]bool
+}
+
+func (wb *WorkloadBalance) Check() error {
+	if len(wb.MasterUUID) == 0 {
+		return fmt.Errorf("Work Balance is missing master UUID")
+	}
+	wb.offsets = make(map[string]float64)
+	wb.lastPoint = nil
 	fids := map[int]string{}
 
 	if len(wb.IDsByUUID) > wb.Stride {
@@ -68,6 +85,32 @@ func (wb *WorkloadBalance) CheckFrame(f *hermes.FrameReadout) (int, error) {
 	if ok := ids[fid]; ok == false {
 		return -1, fmt.Errorf("Producer %s is not meant to produce frame %d mod [%d]", f.ProducerUuid, fid, wb.Stride)
 	}
+
+	time, err := ptypes.Timestamp(f.Time)
+	if err != nil {
+		return -1, err
+	}
+
+	if f.ProducerUuid == wb.MasterUUID {
+		if wb.lastPoint == nil {
+			wb.lastPoint = &synchronizationPoint{}
+		}
+		wb.lastPoint.time = time
+		wb.lastPoint.timestampUS = f.Timestamp
+	} else {
+		if wb.lastPoint == nil {
+			return -1, fmt.Errorf("Missing a first master frame to compute offset: dropping frame")
+		}
+		currentOffset := wb.lastPoint.computeOffset(time, f.Timestamp)
+		offset, ok := wb.offsets[f.ProducerUuid]
+		if ok == false {
+			offset = currentOffset
+		} else {
+			offset += 0.2 * (currentOffset - offset)
+		}
+		wb.offsets[f.ProducerUuid] = offset
+		f.Timestamp += int64(offset)
+	}
 	return fid, nil
 }
 
@@ -98,7 +141,7 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 	//we reserve a large value, but with tiemout we should have no relocation
 	buffer := make(ReadoutBuffer, 0, 10*wb.Stride)
 	betweenFrame := time.Duration(1.0e9/wb.FPS) * time.Nanosecond
-	timeout := time.Duration(wb.Stride+2) * betweenFrame
+	timeout := time.Duration(2*wb.Stride+2) * betweenFrame
 
 	logger := log.New(os.Stderr, "[FrameReadoutMerger] ", log.LstdFlags)
 	for {
@@ -161,11 +204,12 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 			if ok == true && now.After(d) == true {
 				nowPb, _ := ptypes.TimestampProto(now)
 				logger.Printf("marking frame %d as timeouted", i)
-				buffer = append(buffer, &hermes.FrameReadout{
+				ro := &hermes.FrameReadout{
 					Error:   hermes.FrameReadout_PROCESS_TIMEOUT,
 					FrameID: i,
 					Time:    nowPb,
-				})
+				}
+				buffer = append(buffer, ro)
 				delete(deadlines, i)
 				deadlines[i+int64(wb.Stride)] = now.Add(timeout)
 			}
