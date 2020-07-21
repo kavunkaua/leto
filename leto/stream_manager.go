@@ -26,6 +26,9 @@ func NewFFMpegCommand(args []string, streamType string, logFileName string) (*FF
 		ecmd: exec.Command("ffmpeg", args...),
 	}
 	var err error
+	// Close on exec will be set by go runtime, ensuring this file
+	// will be closed on our side, and simply inherited by the ffmpeg
+	// child process (and the OS always close its stderr ;))
 	cmd.log, err = os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
@@ -63,6 +66,8 @@ func (cmd *FFMpegCommand) Stop() {
 }
 
 func (cmd *FFMpegCommand) Wait() error {
+	//todo close log file ???
+
 	return cmd.ecmd.Wait()
 }
 
