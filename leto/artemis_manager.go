@@ -425,7 +425,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		targetHost = strings.TrimPrefix(m.nodeConfig.Master, "leto.") + ".local"
 	}
 	m.artemisCmd = m.TrackingCommand(targetHost, leto.ARTEMIS_IN_PORT, config.Loads.SelfUUID, config.Camera, config.Detection, *config.LegacyMode, wb)
-	m.artemisCmd.Stderr = nil
+	m.artemisCmd.Stderr, err = os.Create(filepath.Join(m.experimentDir, "artemis.stderr"))
 	m.artemisCmd.Args = append(m.artemisCmd.Args, "--log-output-dir", m.experimentDir)
 	m.artemisCmd.Stdin = nil
 
