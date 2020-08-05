@@ -48,14 +48,14 @@ apriltag:
   quad:
     # The only main setting that need to be tuned. When looking for
     # quad in the image, the detector looks for black/white frontier,
-    # with a local difference higher than this value. Increasing this
-    # value would cause more tag to be detected, but it would take a
-    # larger compuatation time.
+    # with a local difference higher than this value. Decreasing this
+    # value would cause more quads to be detected, but it would take a
+    # larger computation time to remove quads that aren't tags.
     min-black-white-diff: 50
 
     # quad decimation. could be 1 1.5 or 2. Increasing it will makes
     # the detection faster, but you may miss a lot of tags, and you
-    # will loose lot of position precision. Unless very rare cases, leave it to 1.
+    # will loose a lot of position precision. Unless very rare cases, leave it to 1.
     # decimate: 1.0
 
     # Adds a gaussian blur to the image before processing. Lots of
@@ -95,16 +95,21 @@ apriltag:
 # streaming / movie archiving section. Usually this section is already
 # configured by the site administrator and should require little to no
 # tuning. Tempering with value may increase a lot local disk usage.
-# stream:
-#
-#  # host to stream to. Nice site administrators will have set it for you.
+stream:
+
+
+#  host to stream to. If none is specified, artemis won't try to 
+#  connect to a stream server. In most site where a stream server 
+# is available (lausanne/bristol) this value is already sets and 
+# do not need to be changed manually
 #  host:
-#  # Constant bit-rate encoding of data
+
+#  Constant bit-rate encoding of data
 #  constant-bit-rate: 2000
-#
-#  # libx264 compression preset
+
+#  libx264 compression preset
 #  quality: fast
-#
-#  # libx264 preset tuning
+
+#  libx264 preset tuning
 #  tuning: film
 #
