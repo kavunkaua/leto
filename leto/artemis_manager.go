@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -297,8 +298,8 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		if len(m.nodeConfig.Slaves) > 0 {
 			cmd := exec.Command("artemis", "--fetch-resolution")
 
-			if config.Camera.StubPath != nil || len(*config.Camera.StubPath) > 0 {
-				cmd.Args = append(cmd.Args, "--stub-image-path", *config.Camera.StubPath)
+			if config.Camera.StubPaths != nil || len(*config.Camera.StubPaths) > 0 {
+				cmd.Args = append(cmd.Args, "--stub-image-paths", strings.Join(*config.Camera.StubPaths, ","))
 			}
 
 			out, err := cmd.CombinedOutput()
@@ -321,7 +322,6 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		m.logger.Printf("Starting in test mode")
 		m.testMode = true
 		// enforces display
-		*config.DisplayOnHost = true
 		config.ExperimentName = "TEST-MODE"
 	} else {
 		m.logger.Printf("New experiment '%s'", config.ExperimentName)
@@ -438,9 +438,6 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		m.artemisCmd.Args = append(m.artemisCmd.Args, "--highlight-tags", strings.Join(tags, ","))
 	}
 
-	if *config.DisplayOnHost == true {
-		m.artemisCmd.Args = append(m.artemisCmd.Args, "-d", "--draw-detection")
-	}
 	if m.nodeConfig.IsMaster() == true {
 		dirname := filepath.Join(m.experimentDir, "ants")
 		err = os.MkdirAll(dirname, 0755)
@@ -449,7 +446,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		}
 		m.artemisCmd.Args = append(m.artemisCmd.Args, "--new-ant-output-dir", dirname,
 			"--new-ant-roi-size", fmt.Sprintf("%d", *config.NewAntOutputROISize),
-			"--ant-renew-period-hour", fmt.Sprintf("%f", config.NewAntRenewPeriod.Hours()))
+			"--image-renew-period", fmt.Sprintf("%s", config.NewAntRenewPeriod))
 		m.streamIn, m.artemisOut = io.Pipe()
 		m.artemisCmd.Stdout = m.artemisOut
 		m.streamManager, err = NewStreamManager(m.experimentDir, *config.Camera.FPS/float64(wb.Stride), config.Stream)
@@ -491,9 +488,16 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		err := m.artemisCmd.Run()
 		m.mx.Lock()
 		defer m.mx.Unlock()
-
+		cleanDir := true
 		if err != nil {
+			cleanDir = false
 			m.logger.Printf("artemis child process exited with error: %s", err)
+			if m.testMode == true {
+				logs, errF := ioutil.ReadFile(filepath.Join(m.experimentDir, "artemis.stderr"))
+				if errF == nil {
+					m.logger.Printf("Artemis STDERR:\n%s", logs)
+				}
+			}
 		}
 		m.artemisCmd = nil
 		//Stops the reading of frame readout, it will close all the chain
@@ -528,7 +532,7 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 		m.broadcast = nil
 		m.logger.Printf("Experiment '%s' done", m.experimentName)
 
-		if m.testMode == true {
+		if m.testMode == true && cleanDir == true {
 			log.Printf("Cleaning '%s'", m.experimentDir)
 			if err := os.RemoveAll(m.experimentDir); err != nil {
 				log.Printf("Could not clean '%s': %s", m.experimentDir, err)
@@ -575,8 +579,8 @@ func (m *ArtemisManager) Stop() error {
 func (m *ArtemisManager) TrackingCommand(hostname string, port int, UUID string, camera leto.CameraConfiguration, detection leto.TagDetectionConfiguration, legacyMode bool, wb *WorkloadBalance) *exec.Cmd {
 	args := []string{}
 
-	if len(*camera.StubPath) != 0 {
-		args = append(args, "--stub-image-path", *camera.StubPath)
+	if len(*camera.StubPaths) != 0 {
+		args = append(args, "--stub-image-paths", strings.Join(*camera.StubPaths, ","))
 	}
 
 	if m.testMode == true {
@@ -590,8 +594,8 @@ func (m *ArtemisManager) TrackingCommand(hostname string, port int, UUID string,
 		args = append(args, "--legacy-mode")
 	}
 	args = append(args, "--camera-fps", fmt.Sprintf("%f", *camera.FPS))
-	args = append(args, "--camera-strobe-us", fmt.Sprintf("%d", camera.StrobeDuration.Nanoseconds()/1000))
-	args = append(args, "--camera-strobe-delay-us", fmt.Sprintf("%d", camera.StrobeDelay.Nanoseconds()/1000))
+	args = append(args, "--camera-strobe", fmt.Sprintf("%s", camera.StrobeDuration))
+	args = append(args, "--camera-strobe-delay", fmt.Sprintf("%s", camera.StrobeDelay))
 	args = append(args, "--at-family", *detection.Family)
 	args = append(args, "--at-quad-decimate", fmt.Sprintf("%f", *detection.Quad.Decimate))
 	args = append(args, "--at-quad-sigma", fmt.Sprintf("%f", *detection.Quad.Sigma))
@@ -608,7 +612,7 @@ func (m *ArtemisManager) TrackingCommand(hostname string, port int, UUID string,
 	}
 
 	if m.nodeConfig.IsMaster() == true {
-		args = append(args, "--video-to-stdout")
+		args = append(args, "--video-output-to-stdout")
 		args = append(args, "--video-output-height", "1080")
 		args = append(args, "--video-output-add-header")
 	}

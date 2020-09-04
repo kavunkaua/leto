@@ -20,13 +20,9 @@ legacy-mode: false
 new-ant-roi: 600
 
 # The process of saving new discovered tag is reset after a defined
-# period. Too small poeriod will produce a lot of data
-new-ant-renew-period: 2h
+# period. Too small period will produce a lot of data
+image-renew-period: 2h
 
-# When turned on, a window will be opened on the host and the tracking
-# will be displayed in realtime. This option may reduce a bit the
-# tracking performance.
-host-display: false
 
 
 # Camera illumination settings
@@ -43,7 +39,7 @@ camera:
 # implementation
 apriltag:
   # family to use. Most user will have to change it
-  family: 36h11
+  family:
   # image quad detection section
   quad:
     # The only main setting that need to be tuned. When looking for
@@ -98,9 +94,9 @@ apriltag:
 stream:
 
 
-#  host to stream to. If none is specified, artemis won't try to 
-#  connect to a stream server. In most site where a stream server 
-# is available (lausanne/bristol) this value is already sets and 
+#  host to stream to. If none is specified, artemis won't try to
+#  connect to a stream server. In most site where a stream server
+# is available (lausanne/bristol) this value is already sets and
 # do not need to be changed manually
 #  host:
 
