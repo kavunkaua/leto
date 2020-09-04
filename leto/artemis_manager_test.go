@@ -27,10 +27,10 @@ func (s *ArtemisManagerSuite) TestCanExtractVariantFromUpdateToolOutput(c *C) {
 
     To install firmware variant "1-df-camera, line-scan" revision 273, run 'coaxlink-firmware install "1-df-camera, line-scan" --card=0'
 `
-	res, err := extractcoaxlinkFirmwareOutput([]byte(txt))
+	res, err := extractCoaxlinkFirmwareOutput([]byte(txt))
 	c.Assert(err, IsNil)
 	c.Check(res, Equals, "1-df-camera")
-	res, err = extractcoaxlinkFirmwareOutput([]byte(""))
+	res, err = extractCoaxlinkFirmwareOutput([]byte(""))
 	c.Check(err, ErrorMatches, `Could not determine firmware variant in output: ''`)
 	c.Check(res, Equals, "")
 }
