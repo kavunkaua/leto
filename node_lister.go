@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/adrg/xdg"
 	"github.com/grandcat/zeroconf"
 	"gopkg.in/yaml.v2"
-	"launchpad.net/go-xdg"
 )
 
 type NodeLister struct {
@@ -42,7 +42,7 @@ func NewNodeLister() *NodeLister {
 }
 
 func (n *NodeLister) cacheFilePath() string {
-	return filepath.Join(xdg.Cache.Home(), "fort/leto/node.cache")
+	return filepath.Join(xdg.CacheHome, "fort/leto/node.cache")
 }
 
 func (n *NodeLister) load() {

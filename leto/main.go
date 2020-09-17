@@ -148,6 +148,9 @@ func Execute() error {
 	if err != nil {
 		return err
 	}
+
+	l.artemis.LoadFromPersistentFile()
+
 	l.logger = log.New(os.Stderr, "[rpc] ", log.LstdFlags)
 	rpcRouter := rpc.NewServer()
 	rpcRouter.Register(l)

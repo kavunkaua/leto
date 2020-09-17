@@ -20,6 +20,7 @@ import (
 	"github.com/formicidae-tracker/hermes"
 	"github.com/formicidae-tracker/leto"
 	"github.com/google/uuid"
+	"gopkg.in/yaml.v2"
 )
 
 type ArtemisManager struct {
@@ -120,12 +121,16 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	m.spawnTasks()
 
+	m.writePersistentFile()
+
 	return nil
 }
 
 func (m *ArtemisManager) Stop() error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
+
+	m.removePersistentFile()
 
 	if m.isStarted() == false {
 		return fmt.Errorf("Already stoppped")
@@ -868,5 +873,52 @@ func newExperimentLog(hasError bool,
 		End:               endTime,
 		YamlConfiguration: string(yamlConfig),
 		Log:               string(log),
+	}
+}
+
+func (m *ArtemisManager) persitentFilePath() string {
+	return filepath.Join(xdg.DataHome, "fort/leto/current-experiment.yml")
+}
+
+func (m *ArtemisManager) writePersistentFile() {
+	err := os.MkdirAll(filepath.Dir(m.persitentFilePath()), 0755)
+	if err != nil {
+		m.logger.Printf("Could not create data dir for '%s': %s", m.persitentFilePath(), err)
+		return
+	}
+	configData, err := yaml.Marshal(m.experimentConfig)
+	if err != nil {
+		m.logger.Printf("Could not marshal config data to persistent file: %s", err)
+		return
+	}
+	err = ioutil.WriteFile(m.persitentFilePath(), configData, 0644)
+	if err != nil {
+		m.logger.Printf("Could not write persitent config file: %s", err)
+	}
+}
+
+func (m *ArtemisManager) removePersistentFile() {
+	err := os.Remove(m.persitentFilePath())
+	if err != nil {
+		m.logger.Printf("Could not remove persitent file '%s': %s", m.persitentFilePath(), err)
+	}
+}
+
+func (m *ArtemisManager) LoadFromPersistentFile() {
+	configData, err := ioutil.ReadFile(m.persitentFilePath())
+	if err != nil {
+		// if there is no file, there is nothing to load
+		return
+	}
+	config := &leto.TrackingConfiguration{}
+	err = yaml.Unmarshal(configData, config)
+	if err != nil {
+		m.logger.Printf("Could not load configuration from '%s': %s", m.persitentFilePath(), err)
+		return
+	}
+	m.logger.Printf("Restarting experiment from '%s'", m.persitentFilePath())
+	err = m.Start(config)
+	if err != nil {
+		m.logger.Printf("Could not start experiment from '%s': %s", m.persitentFilePath(), err)
 	}
 }
