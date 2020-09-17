@@ -34,7 +34,7 @@ var _ = Suite(&ConfigurationSuite{})
 
 func (s *ConfigurationSuite) TestHasADefaultConfiguration(c *C) {
 	config := RecommendedTrackingConfiguration()
-	config.Loads = &LoadBalancing{}
+	config.Loads = new(LoadBalancing)
 	c.Check(config.CheckAllFieldAreSet(), IsNil)
 }
 
@@ -87,6 +87,7 @@ func (s *ConfigurationSuite) TestYAMLParsing(c *C) {
 
 	*expected.Camera.StubPaths = []string{"foo.png", "bar.png"}
 
+	*expected.Detection.Family = "36h11"
 	txt := `
 experiment: test-configuration
 legacy-mode: false
@@ -124,7 +125,6 @@ highlights:
 `
 
 	result := &TrackingConfiguration{}
-
 	c.Assert(yaml.Unmarshal([]byte(txt), result), IsNil)
 
 	c.Assert(result, DeepEquals, &expected)
