@@ -76,13 +76,22 @@ func NewArtemisManager() (*ArtemisManager, error) {
 	}, nil
 }
 
-func (m *ArtemisManager) Status() (bool, string, time.Time) {
+func (m *ArtemisManager) Status() leto.Status {
 	m.mx.Lock()
 	defer m.mx.Unlock()
-	if m.incoming == nil {
-		return false, "", time.Time{}
+	res := leto.Status{
+		Master:     m.nodeConfig.Master,
+		Slaves:     m.nodeConfig.Slaves,
+		Experiment: nil,
 	}
-	return true, m.experimentConfig.ExperimentName, m.since
+	if m.incoming != nil {
+		res.Experiment = &leto.ExperimentStatus{
+			ExperimentDir: filepath.Base(m.experimentDir),
+			Configuration: *m.experimentConfig,
+			Since:         m.since,
+		}
+	}
+	return res
 }
 
 func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
@@ -587,7 +596,7 @@ func (m *ArtemisManager) startSlavesTrackers() {
 func (m *ArtemisManager) stopSlavesTrackers() {
 	for _, s := range m.nodeConfig.Slaves {
 		resp := leto.Response{}
-		_, _, err := leto.RunForHost(s, "Leto.StopTracking", &leto.TrackingStop{}, &resp)
+		_, _, err := leto.RunForHost(s, "Leto.StopTracking", &leto.NoArgs{}, &resp)
 		if err == nil {
 			err = resp.ToError()
 		}

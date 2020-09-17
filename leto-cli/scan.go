@@ -40,14 +40,14 @@ func (c *ScanCommand) Execute(args []string) error {
 				errors <- err
 				continue
 			}
-			status := &leto.Status{}
-			err = client.Call("Leto.Status", status, status)
+			status := leto.Status{}
+			err = client.Call("Leto.Status", &leto.NoArgs{}, &status)
 			if err != nil {
 				errors <- err
 			}
 			statuses <- Result{
 				Instance: e.Instance,
-				Status:   *status,
+				Status:   status,
 			}
 		}
 	}(entries)
@@ -81,10 +81,10 @@ func (c *ScanCommand) Execute(args []string) error {
 				sep = ",↤ "
 			}
 		}
-		if r.Status.Running == true {
+		if r.Status.Experiment != nil {
 			s = "Running"
-			exp = r.Status.ExperimentName
-			since = r.Status.Since.Format("Mon Jan 2 15:04:05")
+			exp = r.Status.Experiment.Configuration.ExperimentName
+			since = r.Status.Experiment.Since.Format("Mon Jan 2 15:04:05")
 		}
 		fmt.Fprintf(os.Stdout, formatStr, r.Instance, s, exp, since, links)
 	}

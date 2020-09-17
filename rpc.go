@@ -9,12 +9,27 @@ type Response struct {
 	Error string
 }
 
+type NoArgs struct {
+}
+
 type Status struct {
-	Running        bool
-	Since          time.Time
-	ExperimentName string
-	Slaves         []string
-	Master         string
+	Master     string
+	Slaves     []string
+	Experiment *ExperimentStatus
+}
+
+type ExperimentStatus struct {
+	Since         time.Time
+	ExperimentDir string
+	Configuration TrackingConfiguration
+}
+
+type ExperimentLog struct {
+	Log           []byte
+	ExperimentDir string
+	Start, End    time.Time
+	Config        TrackingConfiguration
+	HasError      bool
 }
 
 func (r Response) ToError() error {
@@ -29,9 +44,6 @@ type SlaveTrackingStart struct {
 	IDs    []int
 	Remote string
 	UUID   string
-}
-
-type TrackingStop struct {
 }
 
 type Link struct {

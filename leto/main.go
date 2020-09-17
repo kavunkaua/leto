@@ -29,7 +29,7 @@ func (l *Leto) StartTracking(args *leto.TrackingConfiguration, resp *leto.Respon
 	return nil
 }
 
-func (l *Leto) StopTracking(args *leto.TrackingStop, resp *leto.Response) error {
+func (l *Leto) StopTracking(args *leto.NoArgs, resp *leto.Response) error {
 	l.logger.Printf("new stop request")
 	err := l.artemis.Stop()
 	if err != nil {
@@ -40,10 +40,8 @@ func (l *Leto) StopTracking(args *leto.TrackingStop, resp *leto.Response) error 
 	return nil
 }
 
-func (l *Leto) Status(args *leto.Status, resp *leto.Status) error {
-	resp.Running, resp.ExperimentName, resp.Since = l.artemis.Status()
-	resp.Master = l.artemis.nodeConfig.Master
-	resp.Slaves = l.artemis.nodeConfig.Slaves
+func (l *Leto) Status(args *leto.NoArgs, resp *leto.Status) error {
+	*resp = l.artemis.Status()
 	return nil
 }
 
