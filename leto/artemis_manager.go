@@ -42,6 +42,8 @@ type ArtemisManager struct {
 	experimentConfig *leto.TrackingConfiguration
 	workBalance      *WorkloadBalance
 	since            time.Time
+
+	lastExperimentLog *leto.ExperimentLog
 }
 
 func NewArtemisManager() (*ArtemisManager, error) {
@@ -92,6 +94,12 @@ func (m *ArtemisManager) Status() leto.Status {
 		}
 	}
 	return res
+}
+
+func (m *ArtemisManager) LastExperimentLog() *leto.ExperimentLog {
+	m.mx.Lock()
+	defer m.mx.Unlock()
+	return m.lastExperimentLog
 }
 
 func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
@@ -674,15 +682,7 @@ func (m *ArtemisManager) tearDownExperiment(err error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	if err != nil {
-		m.logger.Printf("artemis child process exited with error: %s", err)
-		if m.testMode == true {
-			logs, errF := ioutil.ReadFile(filepath.Join(m.experimentDir, "artemis.stderr"))
-			if errF == nil {
-				m.logger.Printf("Artemis STDERR:\n%s", logs)
-			}
-		}
-	}
+	m.lastExperimentLog = newExperimentLog(err != nil, m.since, m.experimentConfig, m.experimentDir)
 
 	m.tearDownTrackerListenTask()
 	m.tearDownSubTasks()
@@ -804,5 +804,29 @@ func (m *ArtemisManager) onTrackerAccept() func(c net.Conn) {
 			}
 		}()
 		FrameReadoutReadAll(c, m.incoming, errors)
+	}
+}
+
+func newExperimentLog(hasError bool,
+	startTime time.Time,
+	config *leto.TrackingConfiguration,
+	experimentDir string) *leto.ExperimentLog {
+
+	endTime := time.Now()
+
+	log, err := ioutil.ReadFile(filepath.Join(experimentDir, "artemis.INFO"))
+	if err != nil {
+		toAdd := fmt.Sprintf("Could not read log: %s", err)
+
+		log = append(log, []byte(toAdd)...)
+	}
+
+	return &leto.ExperimentLog{
+		HasError:      hasError,
+		ExperimentDir: filepath.Base(experimentDir),
+		Start:         startTime,
+		End:           endTime,
+		Config:        *config,
+		Log:           log,
 	}
 }

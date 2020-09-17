@@ -24,6 +24,13 @@ type Result struct {
 }
 
 func (c *ScanCommand) Execute(args []string) error {
+	nl := NewNodeLister()
+	foo, err := nl.ListNodes()
+	if err != nil {
+		return err
+	}
+	log.Printf("%+v", foo)
+
 	statuses := make(chan Result, 20)
 
 	resolver, err := zeroconf.NewResolver(nil)
@@ -33,7 +40,6 @@ func (c *ScanCommand) Execute(args []string) error {
 		defer func() { close(errors); close(statuses) }()
 
 		for e := range results {
-
 			client, err := rpc.DialHTTP("tcp",
 				fmt.Sprintf("%s:%d", strings.TrimSuffix(e.HostName, "."), e.Port))
 			if err != nil {
