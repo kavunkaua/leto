@@ -14,6 +14,10 @@ type StartCommand struct {
 var startCommand = &StartCommand{}
 
 func (c *StartCommand) Execute(args []string) error {
+	n, ok := nodes[c.Instance]
+	if ok == false {
+		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	}
 	config := &(c.Config)
 	if len(args) >= 1 {
 		fileConfig, err := leto.ReadConfiguration(args[0])
@@ -27,7 +31,7 @@ func (c *StartCommand) Execute(args []string) error {
 	}
 	config.Loads = nil
 	resp := &leto.Response{}
-	if _, _, err := leto.RunForHost(c.Instance, "Leto.StartTracking", config, resp); err != nil {
+	if err := n.RunMethod("Leto.StartTracking", config, resp); err != nil {
 		return err
 	}
 	return resp.ToError()

@@ -14,6 +14,7 @@ require (
 	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 	gopkg.in/yaml.v2 v2.2.2
+	launchpad.net/go-xdg v0.0.0-20140208094800-000000000010
 )
 
 go 1.13

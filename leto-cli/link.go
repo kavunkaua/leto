@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/formicidae-tracker/leto"
 )
 
@@ -14,12 +16,22 @@ var linkCommand = &LinkingOptions{command: "Leto.Link"}
 var unlinkCommand = &LinkingOptions{command: "Leto.Unlink"}
 
 func (c *LinkingOptions) Execute(args []string) error {
+	master, ok := nodes[c.Master]
+	if ok == false {
+		return fmt.Errorf("Could not find node '%s'", c.Master)
+	}
+
+	_, ok = nodes[c.Slave]
+	if ok == false {
+		return fmt.Errorf("Could not find node '%s'", c.Slave)
+	}
+
 	argsL := leto.Link{
-		Master: c.Master,
-		Slave:  c.Slave,
+		Master: "leto." + c.Master,
+		Slave:  "leto." + c.Slave,
 	}
 	resp := &leto.Response{}
-	if _, _, err := leto.RunForHost(c.Master, c.command, argsL, resp); err != nil {
+	if err := master.RunMethod(c.command, argsL, resp); err != nil {
 		return err
 	}
 	return resp.ToError()

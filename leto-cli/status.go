@@ -14,8 +14,13 @@ type StatusCommand struct {
 var statusCommand = &StatusCommand{}
 
 func (c *StatusCommand) Execute(args []string) error {
+	n, ok := nodes[c.Instance]
+	if ok == false {
+		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	}
+
 	status := leto.Status{}
-	if _, _, err := leto.RunForHost(c.Instance, "Leto.Status", &leto.NoArgs{}, &status); err != nil {
+	if err := n.RunMethod("Leto.Status", &leto.NoArgs{}, &status); err != nil {
 		return err
 	}
 

@@ -38,22 +38,27 @@ func (d *FrameReadoutDisplayer) DisplayFrameReadout(h *hermes.FrameReadout) stri
 }
 
 func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
+	n, ok := nodes[c.Instance]
+	if ok == false {
+		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	}
+
 	resp := leto.Status{}
-	hostname, _, err := leto.RunForHost(c.Instance, "Leto.Status", &leto.NoArgs{}, &resp)
+	err := n.RunMethod("Leto.Status", &leto.NoArgs{}, &resp)
 	if err != nil {
-		return fmt.Errorf("Could not find  instance '%s'", c.Instance)
+		return fmt.Errorf("Could not query '%s' status: %s", c.Instance, err)
 	}
 	if resp.Experiment == nil {
 		return fmt.Errorf("'%s' is not running", c.Instance)
 	}
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", hostname, leto.ARTEMIS_OUT_PORT))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", n.Address, leto.ARTEMIS_OUT_PORT))
 	if err != nil {
 		return fmt.Errorf("Could not connect to '%s': %s", c.Instance, err)
 	}
 
 	version := &hermes.Header{}
-	ok, err := hermes.ReadDelimitedMessage(conn, version)
+	ok, err = hermes.ReadDelimitedMessage(conn, version)
 	if err != nil {
 		conn.Close()
 		return err

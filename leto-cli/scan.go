@@ -1,16 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net/rpc"
 	"os"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/formicidae-tracker/leto"
-	"github.com/grandcat/zeroconf"
 )
 
 type ScanCommand struct {
@@ -24,51 +21,33 @@ type Result struct {
 }
 
 func (c *ScanCommand) Execute(args []string) error {
-	nl := NewNodeLister()
-	foo, err := nl.ListNodes()
-	if err != nil {
-		return err
-	}
-	log.Printf("%+v", foo)
 
 	statuses := make(chan Result, 20)
-
-	resolver, err := zeroconf.NewResolver(nil)
-	entries := make(chan *zeroconf.ServiceEntry)
-	errors := make(chan error)
-	go func(results <-chan *zeroconf.ServiceEntry) {
-		defer func() { close(errors); close(statuses) }()
-
-		for e := range results {
-			client, err := rpc.DialHTTP("tcp",
-				fmt.Sprintf("%s:%d", strings.TrimSuffix(e.HostName, "."), e.Port))
-			if err != nil {
-				errors <- err
-				continue
-			}
+	errors := make(chan error, 20)
+	wg := sync.WaitGroup{}
+	for _, n := range nodes {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			status := leto.Status{}
-			err = client.Call("Leto.Status", &leto.NoArgs{}, &status)
+			err := n.RunMethod("Leto.Status", &leto.NoArgs{}, &status)
+
 			if err != nil {
 				errors <- err
+				return
 			}
-			statuses <- Result{
-				Instance: e.Instance,
-				Status:   status,
-			}
-		}
-	}(entries)
+			statuses <- Result{Instance: n.Name, Status: status}
+		}()
+	}
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-		err = resolver.Browse(ctx, "_leto._tcp", "local.", entries)
-		if err != nil {
-			log.Printf("Could not browse for leto instances: %s", err)
-		}
-		err, ok := <-errors
-		if ok == true {
-			log.Printf("Could not browse for leto instances: %s", err)
-		}
+		wg.Wait()
+		close(errors)
+		close(statuses)
 	}()
+
+	for err := range errors {
+		log.Printf("Could not fetch status: %s", err)
+	}
 
 	formatStr := "%20s | %7s | %20s | %20s | %s\n"
 	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since", "Links")

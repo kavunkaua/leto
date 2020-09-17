@@ -14,8 +14,13 @@ type LastExperimentLogCommand struct {
 var lastExperimentCommand = &LastExperimentLogCommand{}
 
 func (c *LastExperimentLogCommand) Execute(args []string) error {
+	n, ok := nodes[c.Instance]
+	if ok == false {
+		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	}
+
 	log := &leto.ExperimentLog{}
-	if _, _, err := leto.RunForHost(c.Instance, "Leto.LastExperimentLog", &leto.NoArgs{}, &log); err != nil {
+	if err := n.RunMethod("Leto.LastExperimentLog", &leto.NoArgs{}, &log); err != nil {
 		return err
 	}
 	if log == nil {
