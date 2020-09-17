@@ -58,8 +58,6 @@ func (l *Leto) Link(args *leto.Link, resp *leto.Response) error {
 		return nil
 	}
 
-	host = "leto." + host
-
 	if args.Master != host && args.Slave != host {
 		err = fmt.Errorf("Host %s is neither master (%s) or slave (%s)", host, args.Master, args.Slave)
 		return nil
@@ -69,18 +67,25 @@ func (l *Leto) Link(args *leto.Link, resp *leto.Response) error {
 		err = l.artemis.SetMaster(args.Master)
 		return nil
 	}
-	respSlave := leto.Response{}
-	_, _, err = leto.RunForHost(args.Slave, "Leto.Link", args, &respSlave)
+	nodes, err := leto.NewNodeLister().ListNodes()
 	if err != nil {
-		return nil
+		return fmt.Errorf("Could not list local nodes: %s", err)
 	}
-	err = respSlave.ToError()
-	if err != nil {
-		return nil
+	slave, ok := nodes[args.Slave]
+	if ok == false {
+		return fmt.Errorf("Could not find slave '%s'", args.Slave)
 	}
 
-	err = l.artemis.AddSlave(args.Slave)
-	return nil
+	respSlave := leto.Response{}
+	err = slave.RunMethod("Leto.Link", args, &respSlave)
+	if err != nil {
+		err = respSlave.ToError()
+	}
+	if err != nil {
+		return err
+	}
+
+	return l.artemis.AddSlave(args.Slave)
 }
 
 func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
@@ -96,8 +101,6 @@ func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
 		return nil
 	}
 
-	host = "leto." + host
-
 	if args.Master != host && args.Slave != host {
 		err = fmt.Errorf("Host %s is neither master (%s) or slave (%s)", host, args.Master, args.Slave)
 		return nil
@@ -108,18 +111,25 @@ func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
 		return nil
 	}
 
-	err = l.artemis.RemoveSlave(args.Slave)
+	nodes, err := leto.NewNodeLister().ListNodes()
 	if err != nil {
-		return nil
+		return fmt.Errorf("Could not list local nodes: %s", err)
+	}
+	slave, ok := nodes[args.Slave]
+	if ok == false {
+		return fmt.Errorf("Could not find slave '%s'", args.Slave)
 	}
 
 	respSlave := leto.Response{}
-	_, _, err = leto.RunForHost(args.Slave, "Leto.Unlink", args, &respSlave)
+	err = slave.RunMethod("Leto.Unlink", args, &respSlave)
 	if err != nil {
-		return nil
+		err = respSlave.ToError()
 	}
-	err = respSlave.ToError()
-	return nil
+	if err != nil {
+		return fmt.Errorf("Could not unlink slave '%s': %s", args.Slave, err)
+	}
+
+	return l.artemis.RemoveSlave(args.Slave)
 }
 
 func Execute() error {

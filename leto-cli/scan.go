@@ -49,7 +49,7 @@ func (c *ScanCommand) Execute(args []string) error {
 		log.Printf("Could not fetch status: %s", err)
 	}
 
-	formatStr := "%20s | %7s | %20s | %20s | %s\n"
+	formatStr := "%15s | %7s | %60s | %20s | %s\n"
 	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since", "Links")
 	fmt.Fprintf(os.Stdout, "--------------------------------------------------------------------------------\n")
 	for r := range statuses {

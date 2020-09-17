@@ -27,8 +27,8 @@ func (c *LinkingOptions) Execute(args []string) error {
 	}
 
 	argsL := leto.Link{
-		Master: "leto." + c.Master,
-		Slave:  "leto." + c.Slave,
+		Master: c.Master,
+		Slave:  c.Slave,
 	}
 	resp := &leto.Response{}
 	if err := master.RunMethod(c.command, argsL, resp); err != nil {

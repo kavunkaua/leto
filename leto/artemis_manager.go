@@ -587,29 +587,58 @@ func (m *ArtemisManager) spawnStreamTask() {
 }
 
 func (m *ArtemisManager) startSlavesTrackers() {
-	for _, s := range m.nodeConfig.Slaves {
+	if len(m.nodeConfig.Slaves) == 0 {
+		return
+	}
+
+	nl := leto.NewNodeLister()
+	nodes, err := nl.ListNodes()
+	if err != nil {
+		m.logger.Printf("Could not list all local nodes: %s", err)
+		m.logger.Printf("Not starting slaves")
+	}
+
+	for _, slaveName := range m.nodeConfig.Slaves {
+		slave, ok := nodes[slaveName]
+		if ok == false {
+			m.logger.Printf("Could not find slave '%s', not starting it", slaveName)
+			continue
+		}
+
 		slaveConfig := *m.experimentConfig
-		slaveConfig.Loads.SelfUUID = slaveConfig.Loads.UUIDs[s]
+		slaveConfig.Loads.SelfUUID = slaveConfig.Loads.UUIDs[slaveName]
 		resp := leto.Response{}
-		_, _, err := leto.RunForHost(s, "Leto.StartTracking", &slaveConfig, &resp)
+		err := slave.RunMethod("Leto.StartTracking", &slaveConfig, &resp)
 		if err == nil {
 			err = resp.ToError()
 		}
 		if err != nil {
-			m.logger.Printf("Could not start slave %s: %s", s, err)
+			m.logger.Printf("Could not start slave %s: %s", slaveName, err)
 		}
 	}
 }
 
 func (m *ArtemisManager) stopSlavesTrackers() {
-	for _, s := range m.nodeConfig.Slaves {
+	nl := leto.NewNodeLister()
+	nodes, err := nl.ListNodes()
+	if err != nil {
+		m.logger.Printf("Could not list all local nodes: %s", err)
+		m.logger.Printf("Not stopping slaves")
+	}
+
+	for _, slaveName := range m.nodeConfig.Slaves {
+		slave, ok := nodes[slaveName]
+		if ok == false {
+			m.logger.Printf("Could not find slave '%s', not stopping it", slaveName)
+			continue
+		}
 		resp := leto.Response{}
-		_, _, err := leto.RunForHost(s, "Leto.StopTracking", &leto.NoArgs{}, &resp)
+		err := slave.RunMethod("Leto.StopTracking", &leto.NoArgs{}, &resp)
 		if err == nil {
 			err = resp.ToError()
 		}
 		if err != nil {
-			m.logger.Printf("Could not stop slave %s: %s", s, err)
+			m.logger.Printf("Could not stop slave %s: %s", slaveName, err)
 		}
 	}
 }
