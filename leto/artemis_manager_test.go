@@ -75,7 +75,7 @@ func (s *ArtemisManagerSuite) TestCanCheckVersion(c *C) {
 	}
 
 	for _, d := range testdata {
-		err := CheckArtemisVersion(d.Actual, d.Minimal)
+		err := checkArtemisVersion(d.Actual, d.Minimal)
 		if len(d.Expected) == 0 {
 			c.Check(err, IsNil)
 			continue
@@ -125,7 +125,7 @@ func (s *ArtemisManagerSuite) TestCheckFirmwareVariant(c *C) {
 	}
 
 	for _, d := range testdata {
-		err := CheckFirmwareVariant(d.C, d.Variant, d.CheckMaster)
+		err := checkFirmwareVariant(d.C, d.Variant, d.CheckMaster)
 		if len(d.Expected) == 0 {
 			c.Check(err, IsNil)
 			continue
