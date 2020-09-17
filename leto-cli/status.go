@@ -35,14 +35,16 @@ func (c *StatusCommand) Execute(args []string) error {
 		fmt.Printf("State: Idle\n")
 		return nil
 	}
-	fmt.Printf("State: Running Experiment '%s' since %s\n", status.Experiment.Configuration.ExperimentName, status.Experiment.Since)
+	config := leto.TrackingConfiguration{}
+	err := yaml.Unmarshal([]byte(status.Experiment.YamlConfiguration), &config)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("State: Running Experiment '%s' since %s\n", config.ExperimentName, status.Experiment.Since)
 	fmt.Printf("Experiment Local Output Directory: %s\n", status.Experiment.ExperimentDir)
 	fmt.Printf("=== Experiment YAML Configuration START ===\n")
-	yamlConfig, err := yaml.Marshal(&status.Experiment.Configuration)
-	if err != nil {
-		return fmt.Errorf("Could not generate YAML configuration: %s", err)
-	}
-	fmt.Printf("%s\n", yamlConfig)
+	fmt.Println(status.Experiment.YamlConfiguration)
 	fmt.Printf("=== Experiment YAML Configuration END ===\n")
 	return nil
 }

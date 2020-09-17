@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/formicidae-tracker/leto"
+	"gopkg.in/yaml.v2"
 )
 
 type ScanCommand struct {
@@ -68,7 +69,9 @@ func (c *ScanCommand) Execute(args []string) error {
 		}
 		if r.Status.Experiment != nil {
 			s = "Running"
-			exp = r.Status.Experiment.Configuration.ExperimentName
+			config := leto.TrackingConfiguration{}
+			yaml.Unmarshal([]byte(r.Status.Experiment.YamlConfiguration), &config)
+			exp = config.ExperimentName
 			since = r.Status.Experiment.Since.Format("Mon Jan 2 15:04:05")
 		}
 		fmt.Fprintf(os.Stdout, formatStr, r.Instance, s, exp, since, links)

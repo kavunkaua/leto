@@ -19,30 +19,28 @@ func (c *LastExperimentLogCommand) Execute(args []string) error {
 		return fmt.Errorf("Could not find node '%s'", c.Instance)
 	}
 
-	log := &leto.ExperimentLog{}
+	log := leto.ExperimentLog{}
 	if err := n.RunMethod("Leto.LastExperimentLog", &leto.NoArgs{}, &log); err != nil {
 		return err
 	}
-	if log == nil {
-		fmt.Printf("No experiment were run on '%s' since last node boot\n", c.Instance)
-		return nil
-	}
-	yamlConfig, err := yaml.Marshal(&log.Config)
+
+	config := leto.TrackingConfiguration{}
+	err := yaml.Unmarshal([]byte(log.YamlConfiguration), &config)
 	if err != nil {
-		return fmt.Errorf("Could not generate YAML configuration: %s", err)
+		return fmt.Errorf("Could not parse YAML configuration: %s", err)
 	}
 
-	fmt.Printf("Experiment Name: %s\n", log.Config.ExperimentName)
+	fmt.Printf("Experiment Name: %s\n", config.ExperimentName)
 	fmt.Printf("Experiment Local Output Dir: %s\n", log.ExperimentDir)
 	fmt.Printf("Experiment Start Date: %s\n", log.Start)
 	fmt.Printf("Experiment End Date: %s\n", log.End)
 	fmt.Printf("Artemis returned an error: %t\n", log.HasError)
 
 	fmt.Printf("=== Experiment YAML Configuration START ===\n")
-	fmt.Println(yamlConfig)
+	fmt.Println(log.YamlConfiguration)
 	fmt.Printf("=== Experiment YAML Configuration END ===\n")
 	fmt.Printf("=== Artemis INFO LOG ===\n")
-	fmt.Println(log.Log)
+	fmt.Println(string(log.Log))
 	fmt.Printf("=== Artemis INFO LOG END ===\n")
 
 	return nil

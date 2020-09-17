@@ -86,11 +86,16 @@ func (m *ArtemisManager) Status() leto.Status {
 		Slaves:     m.nodeConfig.Slaves,
 		Experiment: nil,
 	}
+
+	yamlConfig, err := m.experimentConfig.Yaml()
+	if err != nil {
+		yamlConfig = []byte(fmt.Sprintf("Could not generate yaml config: %s", err))
+	}
 	if m.incoming != nil {
 		res.Experiment = &leto.ExperimentStatus{
-			ExperimentDir: filepath.Base(m.experimentDir),
-			Configuration: *m.experimentConfig,
-			Since:         m.since,
+			ExperimentDir:     filepath.Base(m.experimentDir),
+			YamlConfiguration: string(yamlConfig),
+			Since:             m.since,
 		}
 	}
 	return res
@@ -715,7 +720,6 @@ func (m *ArtemisManager) tearDownExperiment(err error) {
 
 	m.tearDownTrackerListenTask()
 	m.tearDownSubTasks()
-	m.cleanUpGlobalVariables()
 
 	m.logger.Printf("Experiment '%s' done", m.experimentConfig.ExperimentName)
 
@@ -725,6 +729,8 @@ func (m *ArtemisManager) tearDownExperiment(err error) {
 			log.Printf("Could not clean '%s': %s", m.experimentDir, err)
 		}
 	}
+
+	m.cleanUpGlobalVariables()
 }
 
 func (m *ArtemisManager) spawnLocalTracker() {
@@ -838,7 +844,7 @@ func (m *ArtemisManager) onTrackerAccept() func(c net.Conn) {
 
 func newExperimentLog(hasError bool,
 	startTime time.Time,
-	config *leto.TrackingConfiguration,
+	experimentConfig *leto.TrackingConfiguration,
 	experimentDir string) *leto.ExperimentLog {
 
 	endTime := time.Now()
@@ -850,12 +856,17 @@ func newExperimentLog(hasError bool,
 		log = append(log, []byte(toAdd)...)
 	}
 
+	yamlConfig, err := experimentConfig.Yaml()
+	if err != nil {
+		yamlConfig = []byte(fmt.Sprintf("Could not generate yaml config: %s", err))
+	}
+
 	return &leto.ExperimentLog{
-		HasError:      hasError,
-		ExperimentDir: filepath.Base(experimentDir),
-		Start:         startTime,
-		End:           endTime,
-		Config:        *config,
-		Log:           log,
+		HasError:          hasError,
+		ExperimentDir:     filepath.Base(experimentDir),
+		Start:             startTime,
+		End:               endTime,
+		YamlConfiguration: string(yamlConfig),
+		Log:               string(log),
 	}
 }

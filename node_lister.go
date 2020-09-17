@@ -74,23 +74,20 @@ func (n *NodeLister) ListNodes() (map[string]Node, error) {
 	}
 
 	resolver, err := zeroconf.NewResolver(nil)
+	if err != nil {
+		return nil, fmt.Errorf("Could not create resolver: %s", err)
+	}
 	entries := make(chan *zeroconf.ServiceEntry, 100)
-	errors := make(chan error, 1)
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
-		defer cancel()
-		err = resolver.Browse(ctx, "_leto._tcp", "local.", entries)
-		if err != nil {
-			errors <- err
-		}
-		close(errors)
-	}()
-	res := make(map[string]Node)
-	err, ok := <-errors
-	if ok == true {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	err = resolver.Browse(ctx, "_leto._tcp", "local.", entries)
+	if err != nil {
 		return nil, fmt.Errorf("Could not browse for leto instances: %s", err)
 	}
-	<-errors
+
+	<-ctx.Done()
+
+	res := make(map[string]Node)
 
 	for e := range entries {
 		name := strings.TrimPrefix(e.Instance, "leto.")

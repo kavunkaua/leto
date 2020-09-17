@@ -45,6 +45,11 @@ func (l *Leto) Status(args *leto.NoArgs, resp *leto.Status) error {
 	return nil
 }
 
+func (l *Leto) LastExperimentLog(args *leto.NoArgs, reply **leto.ExperimentLog) error {
+	*reply = l.artemis.LastExperimentLog()
+	return nil
+}
+
 func (l *Leto) Link(args *leto.Link, resp *leto.Response) error {
 	var err error = nil
 	defer func() {

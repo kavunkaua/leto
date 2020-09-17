@@ -19,17 +19,17 @@ type Status struct {
 }
 
 type ExperimentStatus struct {
-	Since         time.Time
-	ExperimentDir string
-	Configuration TrackingConfiguration
+	Since             time.Time
+	ExperimentDir     string
+	YamlConfiguration string
 }
 
 type ExperimentLog struct {
-	Log           []byte
-	ExperimentDir string
-	Start, End    time.Time
-	Config        TrackingConfiguration
-	HasError      bool
+	Log               string
+	ExperimentDir     string
+	Start, End        time.Time
+	YamlConfiguration string
+	HasError          bool
 }
 
 func (r Response) ToError() error {
