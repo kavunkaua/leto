@@ -130,11 +130,11 @@ func (m *ArtemisManager) Stop() error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	m.removePersistentFile()
-
 	if m.isStarted() == false {
 		return fmt.Errorf("Already stoppped")
 	}
+
+	m.removePersistentFile()
 
 	if m.artemisCmd != nil {
 		if m.nodeConfig.IsMaster() == true {

@@ -69,7 +69,7 @@ func (n *NodeLister) save() {
 }
 
 func (n *NodeLister) ListNodes() (map[string]Node, error) {
-	if time.Now().Before(n.CacheDate.Add(1*time.Minute)) == true {
+	if time.Now().Before(n.CacheDate.Add(NODE_CACHE_TTL)) == true {
 		return n.Cache, nil
 	}
 
@@ -78,7 +78,7 @@ func (n *NodeLister) ListNodes() (map[string]Node, error) {
 		return nil, fmt.Errorf("Could not create resolver: %s", err)
 	}
 	entries := make(chan *zeroconf.ServiceEntry, 100)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 	err = resolver.Browse(ctx, "_leto._tcp", "local.", entries)
 	if err != nil {
