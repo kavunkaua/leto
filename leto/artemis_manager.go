@@ -721,6 +721,10 @@ func (m *ArtemisManager) tearDownExperiment(err error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
+	if err != nil {
+		m.removePersistentFile()
+	}
+
 	m.lastExperimentLog = newExperimentLog(err != nil, m.since, m.experimentConfig, m.experimentDir)
 
 	m.tearDownTrackerListenTask()
