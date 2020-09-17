@@ -138,6 +138,11 @@ func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
 }
 
 func Execute() error {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Printf("leto %s\n", leto.LETO_VERSION)
+		return nil
+	}
+
 	host, err := os.Hostname()
 	if err != nil {
 		return err
