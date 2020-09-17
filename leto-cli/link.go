@@ -1,14 +1,15 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/formicidae-tracker/leto"
 )
 
 type LinkingOptions struct {
-	Master  string `short:"M" long:"master" decsription:"instance to be the master" required:"true"`
-	Slave   string `short:"S" long:"slave" decsription:"instance to be the slave" required:"true"`
+	Args struct {
+		Master Nodename
+		Slave  Nodename
+	} `positional-arsg:"yes" required:"yes"`
+
 	command string
 }
 
@@ -16,19 +17,19 @@ var linkCommand = &LinkingOptions{command: "Leto.Link"}
 var unlinkCommand = &LinkingOptions{command: "Leto.Unlink"}
 
 func (c *LinkingOptions) Execute(args []string) error {
-	master, ok := nodes[c.Master]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Master)
+	master, err := c.Args.Master.GetNode()
+	if err != nil {
+		return err
 	}
 
-	_, ok = nodes[c.Slave]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Slave)
+	slave, err := c.Args.Slave.GetNode()
+	if err != nil {
+		return err
 	}
 
 	argsL := leto.Link{
-		Master: c.Master,
-		Slave:  c.Slave,
+		Master: master.Name,
+		Slave:  slave.Name,
 	}
 	resp := &leto.Response{}
 	if err := master.RunMethod(c.command, argsL, resp); err != nil {

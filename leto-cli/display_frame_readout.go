@@ -12,7 +12,9 @@ import (
 )
 
 type DisplayFrameReadoutCommand struct {
-	Instance string `short:"I" long:"instance" decsription:"instance to read frame from" required:"true"`
+	Args struct {
+		Node Nodename
+	} `positional-args:"yes" required:"yes"`
 }
 
 var displayFrameReadoutCommand = &DisplayFrameReadoutCommand{}
@@ -38,27 +40,27 @@ func (d *FrameReadoutDisplayer) DisplayFrameReadout(h *hermes.FrameReadout) stri
 }
 
 func (c *DisplayFrameReadoutCommand) Execute(args []string) error {
-	n, ok := nodes[c.Instance]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	n, err := c.Args.Node.GetNode()
+	if err != nil {
+		return err
 	}
 
 	resp := leto.Status{}
-	err := n.RunMethod("Leto.Status", &leto.NoArgs{}, &resp)
+	err = n.RunMethod("Leto.Status", &leto.NoArgs{}, &resp)
 	if err != nil {
-		return fmt.Errorf("Could not query '%s' status: %s", c.Instance, err)
+		return fmt.Errorf("Could not query '%s' status: %s", n.Name, err)
 	}
 	if resp.Experiment == nil {
-		return fmt.Errorf("'%s' is not running", c.Instance)
+		return fmt.Errorf("'%s' is not running", n.Name)
 	}
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", n.Address, leto.ARTEMIS_OUT_PORT))
 	if err != nil {
-		return fmt.Errorf("Could not connect to '%s': %s", c.Instance, err)
+		return fmt.Errorf("Could not connect to '%s': %s", n.Name, err)
 	}
 
 	version := &hermes.Header{}
-	ok, err = hermes.ReadDelimitedMessage(conn, version)
+	ok, err := hermes.ReadDelimitedMessage(conn, version)
 	if err != nil {
 		conn.Close()
 		return err

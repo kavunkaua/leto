@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/formicidae-tracker/leto"
 	"github.com/jessevdk/go-flags"
@@ -11,7 +12,34 @@ import (
 type Options struct {
 }
 
+type Nodename string
+
 var nodes map[string]leto.Node
+
+func (n *Nodename) GetNode() (*leto.Node, error) {
+	if len(*n) == 0 {
+		return nil, fmt.Errorf("Missing mandatory node name")
+	}
+	node, ok := nodes[string(*n)]
+	if ok == false {
+		return nil, fmt.Errorf("Could not find node '%s'", *n)
+	}
+	return &node, nil
+}
+
+func (n *Nodename) Complete(match string) []flags.Completion {
+	res := make([]flags.Completion, 0, len(nodes))
+	for nodeName, node := range nodes {
+		if strings.HasPrefix(nodeName, match) == false {
+			continue
+		}
+		res = append(res, flags.Completion{
+			Item:        nodeName,
+			Description: fmt.Sprintf("%s:%d", node.Address, node.Port),
+		})
+	}
+	return res
+}
 
 var opts = &Options{}
 

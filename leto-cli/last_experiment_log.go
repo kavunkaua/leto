@@ -8,15 +8,17 @@ import (
 )
 
 type LastExperimentLogCommand struct {
-	Instance string `short:"I" long:"instance" decsription:"instance to start the tracking" required:"true"`
+	Args struct {
+		Node Nodename
+	} `positional-args:"yes" required:"yes"`
 }
 
 var lastExperimentCommand = &LastExperimentLogCommand{}
 
 func (c *LastExperimentLogCommand) Execute(args []string) error {
-	n, ok := nodes[c.Instance]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	n, err := c.Args.Node.GetNode()
+	if err != nil {
+		return err
 	}
 
 	log := leto.ExperimentLog{}
@@ -25,7 +27,7 @@ func (c *LastExperimentLogCommand) Execute(args []string) error {
 	}
 
 	config := leto.TrackingConfiguration{}
-	err := yaml.Unmarshal([]byte(log.YamlConfiguration), &config)
+	err = yaml.Unmarshal([]byte(log.YamlConfiguration), &config)
 	if err != nil {
 		return fmt.Errorf("Could not parse YAML configuration: %s", err)
 	}

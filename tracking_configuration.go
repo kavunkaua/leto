@@ -119,8 +119,8 @@ func (from *TagDetectionConfiguration) Merge(to *TagDetectionConfiguration) erro
 type CameraConfiguration struct {
 	StrobeDelay    *time.Duration `long:"strobe-delay" description:"delay of the strobe signal (recommended:0us)" yaml:"strobe-delay"`
 	StrobeDuration *time.Duration `long:"strobe-duration" description:"duration of the strobe signal (recommended:1500us)" yaml:"strobe-duration"`
-	FPS            *float64       `long:"f" description:"FPS to use for the experiment (recommended:8.0)" yaml:"fps"`
-	StubPaths      *[]string      `yaml:"stub-image-paths"`
+	FPS            *float64       `short:"f" long:"fps" description:"FPS to use for the experiment (recommended:8.0)" yaml:"fps"`
+	StubPaths      *[]string      `long:"stub-image-paths" yaml:"stub-image-paths"`
 }
 
 func RecommendedCameraConfiguration() CameraConfiguration {

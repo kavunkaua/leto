@@ -52,7 +52,7 @@ func (c *ScanCommand) Execute(args []string) error {
 
 	formatStr := "%15s | %7s | %60s | %20s | %s\n"
 	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since", "Links")
-	fmt.Fprintf(os.Stdout, "--------------------------------------------------------------------------------\n")
+	fmt.Fprintf(os.Stdout, "------------------------------------------------------------------------------------------------------------------------\n")
 	for r := range statuses {
 		s := "Idle"
 		exp := "N.A."

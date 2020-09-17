@@ -8,15 +8,17 @@ import (
 )
 
 type StatusCommand struct {
-	Instance string `short:"I" long:"instance" decsription:"instance to start the tracking" required:"true"`
+	Args struct {
+		Node Nodename
+	} `positional-args:"yes" required:"yes"`
 }
 
 var statusCommand = &StatusCommand{}
 
 func (c *StatusCommand) Execute(args []string) error {
-	n, ok := nodes[c.Instance]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	n, err := c.Args.Node.GetNode()
+	if err != nil {
+		return err
 	}
 
 	status := leto.Status{}
@@ -24,7 +26,7 @@ func (c *StatusCommand) Execute(args []string) error {
 		return err
 	}
 
-	fmt.Printf("Node: %s\n", c.Instance)
+	fmt.Printf("Node: %s\n", n.Name)
 	if len(status.Master) == 0 {
 		fmt.Printf("Type: Master\nSlaves : %s\n", status.Slaves)
 	} else {
@@ -36,7 +38,7 @@ func (c *StatusCommand) Execute(args []string) error {
 		return nil
 	}
 	config := leto.TrackingConfiguration{}
-	err := yaml.Unmarshal([]byte(status.Experiment.YamlConfiguration), &config)
+	err = yaml.Unmarshal([]byte(status.Experiment.YamlConfiguration), &config)
 	if err != nil {
 		return err
 	}

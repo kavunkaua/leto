@@ -4,20 +4,26 @@ import (
 	"fmt"
 
 	"github.com/formicidae-tracker/leto"
+	"github.com/jessevdk/go-flags"
 )
 
 type StartCommand struct {
-	Instance string `short:"I" long:"instance" decsription:"instance to start the tracking" required:"true"`
-	Config   leto.TrackingConfiguration
+	Config leto.TrackingConfiguration
+
+	Args struct {
+		Node       Nodename
+		ConfigFile *flags.Filename
+	} `positional-args:"yes"`
 }
 
 var startCommand = &StartCommand{}
 
 func (c *StartCommand) Execute(args []string) error {
-	n, ok := nodes[c.Instance]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	n, err := c.Args.Node.GetNode()
+	if err != nil {
+		return err
 	}
+
 	config := &(c.Config)
 	if len(args) >= 1 {
 		fileConfig, err := leto.ReadConfiguration(args[0])

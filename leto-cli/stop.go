@@ -1,21 +1,21 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/formicidae-tracker/leto"
 )
 
 type StopCommand struct {
-	Instance string `short:"I" long:"instance" decsription:"host to start the tracking" required:"true"`
+	Args struct {
+		Node Nodename
+	} `positional-args:"yes" required:"yes"`
 }
 
 var stopCommand = &StopCommand{}
 
 func (c *StopCommand) Execute([]string) error {
-	n, ok := nodes[c.Instance]
-	if ok == false {
-		return fmt.Errorf("Could not find node '%s'", c.Instance)
+	n, err := c.Args.Node.GetNode()
+	if err != nil {
+		return err
 	}
 
 	resp := &leto.Response{}
