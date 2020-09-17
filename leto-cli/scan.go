@@ -26,10 +26,12 @@ func (c *ScanCommand) Execute(args []string) error {
 	statuses := make(chan Result, 20)
 	errors := make(chan error, 20)
 	wg := sync.WaitGroup{}
-	for _, n := range nodes {
+	for _, nlocal := range nodes {
+		n := nlocal
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
 			status := leto.Status{}
 			err := n.RunMethod("Leto.Status", &leto.NoArgs{}, &status)
 
