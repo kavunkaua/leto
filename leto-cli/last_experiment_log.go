@@ -44,6 +44,9 @@ func (c *LastExperimentLogCommand) Execute(args []string) error {
 	fmt.Printf("=== Artemis INFO LOG ===\n")
 	fmt.Println(string(log.Log))
 	fmt.Printf("=== Artemis INFO LOG END ===\n")
+	fmt.Printf("=== Artemis STDERR LOG ===\n")
+	fmt.Println(string(log.Stderr))
+	fmt.Printf("=== Artemis STDERR LOG END ===\n")
 
 	return nil
 }

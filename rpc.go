@@ -26,6 +26,7 @@ type ExperimentStatus struct {
 
 type ExperimentLog struct {
 	Log               string
+	Stderr            string
 	ExperimentDir     string
 	Start, End        time.Time
 	YamlConfiguration string

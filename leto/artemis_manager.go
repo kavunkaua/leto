@@ -523,7 +523,10 @@ func (m *ArtemisManager) setUpTrackerTask() error {
 	defer artemisCommandLog.Close()
 
 	m.artemisCmd = m.buildTrackingCommand()
-	m.artemisCmd.Stderr = nil
+	m.artemisCmd.Stderr, err = os.Create(filepath.Join(m.experimentDir, "artemis.stderr"))
+	if err != nil {
+		return err
+	}
 	m.artemisCmd.Stdin = nil
 	m.artemisCmd.Stdout = nil
 
@@ -865,6 +868,12 @@ func newExperimentLog(hasError bool,
 		log = append(log, []byte(toAdd)...)
 	}
 
+	stderr, err := ioutil.ReadFile(filepath.Join(experimentDir, "artemis.stderr"))
+	if err != nil {
+		toAdd := fmt.Sprintf("Could not read stderr: %s", err)
+		stderr = append(stderr, []byte(toAdd)...)
+	}
+
 	yamlConfig, err := experimentConfig.Yaml()
 	if err != nil {
 		yamlConfig = []byte(fmt.Sprintf("Could not generate yaml config: %s", err))
@@ -877,6 +886,7 @@ func newExperimentLog(hasError bool,
 		End:               endTime,
 		YamlConfiguration: string(yamlConfig),
 		Log:               string(log),
+		Stderr:            string(stderr),
 	}
 }
 
