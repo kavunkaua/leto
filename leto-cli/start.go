@@ -12,7 +12,7 @@ type StartCommand struct {
 
 	Args struct {
 		Node       Nodename
-		ConfigFile *flags.Filename
+		ConfigFile flags.Filename
 	} `positional-args:"yes"`
 }
 
@@ -25,8 +25,8 @@ func (c *StartCommand) Execute(args []string) error {
 	}
 
 	config := &(c.Config)
-	if len(args) >= 1 {
-		fileConfig, err := leto.ReadConfiguration(args[0])
+	if len(c.Args.ConfigFile) > 0 {
+		fileConfig, err := leto.ReadConfiguration(string(c.Args.ConfigFile))
 		if err != nil {
 			return err
 		}
