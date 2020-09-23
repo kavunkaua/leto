@@ -8,7 +8,7 @@ type LinkingOptions struct {
 	Args struct {
 		Master Nodename
 		Slave  Nodename
-	} `positional-arsg:"yes" required:"yes"`
+	} `positional-args:"yes" required:"yes"`
 
 	command string
 }
