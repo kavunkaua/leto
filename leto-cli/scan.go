@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -19,6 +20,13 @@ var scanCommand = &ScanCommand{}
 type Result struct {
 	Instance string
 	Status   leto.Status
+}
+
+func (r Result) running() int {
+	if r.Status.Experiment == nil {
+		return 0
+	}
+	return 1
 }
 
 func (c *ScanCommand) Execute(args []string) error {
@@ -52,10 +60,22 @@ func (c *ScanCommand) Execute(args []string) error {
 		log.Printf("Could not fetch status: %s", err)
 	}
 
+	sortedStatus := []Result{}
+	for r := range statuses {
+		sortedStatus = append(sortedStatus, r)
+	}
+
+	sort.Slice(sortedStatus, func(i, j int) bool {
+		if sortedStatus[i].running() == sortedStatus[j].running() {
+			return sortedStatus[i].Instance < sortedStatus[j].Instance
+		}
+		return sortedStatus[i].running() > sortedStatus[j].running()
+	})
+
 	formatStr := "%15s | %7s | %60s | %20s | %s\n"
 	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since", "Links")
 	fmt.Fprintf(os.Stdout, "------------------------------------------------------------------------------------------------------------------------\n")
-	for r := range statuses {
+	for _, r := range sortedStatus {
 		s := "Idle"
 		exp := "N.A."
 		since := "N.A."
