@@ -152,14 +152,16 @@ func (m *ArtemisManager) Stop() error {
 	return nil
 }
 
-func (m *ArtemisManager) SetMaster(hostname string) (err error) {
+func (m *ArtemisManager) SetMaster(hostname string) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.isStarted() == true {
-		err = fmt.Errorf("Could not change master/slave configuration while experiment %s is running", m.experimentConfig.ExperimentName)
-		return
+		return fmt.Errorf("Could not change master/slave configuration while experiment %s is running", m.experimentConfig.ExperimentName)
 	}
+	return m.setMaster(hostname)
+}
 
+func (m *ArtemisManager) setMaster(hostname string) (err error) {
 	defer func() {
 		if err == nil {
 			m.nodeConfig.Save()
@@ -187,17 +189,20 @@ func (m *ArtemisManager) AddSlave(hostname string) (err error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.isStarted() == true {
-		err = fmt.Errorf("Could not change master/slave configuration while experiment %s is running", m.experimentConfig.ExperimentName)
-		return
+		return fmt.Errorf("Could not change master/slave configuration while experiment %s is running", m.experimentConfig.ExperimentName)
 	}
 
+	return m.addSlave(hostname)
+}
+
+func (m *ArtemisManager) addSlave(hostname string) (err error) {
 	defer func() {
 		if err == nil {
 			m.nodeConfig.Save()
 		}
 	}()
 
-	err = m.SetMaster("")
+	err = m.setMaster("")
 	if err != nil {
 		return
 	}
@@ -214,10 +219,12 @@ func (m *ArtemisManager) RemoveSlave(hostname string) (err error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if m.isStarted() == true {
-		err = fmt.Errorf("Could not change master/slave configuration while experiment %s is running", m.experimentConfig.ExperimentName)
-		return
+		return fmt.Errorf("Could not change master/slave configuration while experiment %s is running", m.experimentConfig.ExperimentName)
 	}
+	return m.removeSlave(hostname)
+}
 
+func (m *ArtemisManager) removeSlave(hostname string) (err error) {
 	defer func() {
 		if err == nil {
 			m.nodeConfig.Save()

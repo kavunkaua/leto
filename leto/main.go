@@ -83,7 +83,7 @@ func (l *Leto) Link(args *leto.Link, resp *leto.Response) error {
 
 	respSlave := leto.Response{}
 	err = slave.RunMethod("Leto.Link", args, &respSlave)
-	if err != nil {
+	if err == nil {
 		err = respSlave.ToError()
 	}
 	if err != nil {
@@ -127,7 +127,7 @@ func (l *Leto) Unlink(args *leto.Link, resp *leto.Response) error {
 
 	respSlave := leto.Response{}
 	err = slave.RunMethod("Leto.Unlink", args, &respSlave)
-	if err != nil {
+	if err == nil {
 		err = respSlave.ToError()
 	}
 	if err != nil {
