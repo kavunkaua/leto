@@ -35,7 +35,8 @@ func (c *MonitorCommand) getStatuses() (map[string]*leto.TrackingConfiguration, 
 		Error    error
 	}
 	results := make(chan Result, 20)
-	for _, n := range nodes {
+	for _, nLocal := range nodes {
+		n := nLocal
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -112,7 +113,6 @@ func (c *MonitorCommand) Execute(args []string) error {
 	c.lister = leto.NewNodeLister()
 	c.currentStatuses = nil
 	for {
-		log.Printf("Fetching status")
 		events, err := c.buildEvents()
 		if err != nil {
 			//TODO report an error
