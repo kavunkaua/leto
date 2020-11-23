@@ -109,8 +109,10 @@ func (c *MonitorCommand) buildEvents() ([]string, error) {
 }
 
 func (c *MonitorCommand) Execute(args []string) error {
+	c.lister = leto.NewNodeLister()
 	c.currentStatuses = nil
 	for {
+		log.Printf("Fetching status")
 		events, err := c.buildEvents()
 		if err != nil {
 			//TODO report an error
