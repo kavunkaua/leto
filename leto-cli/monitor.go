@@ -50,9 +50,10 @@ func (c *MonitorCommand) getStatuses() (map[string]*leto.TrackingConfiguration, 
 
 			if status.Experiment == nil {
 				results <- Result{Instance: n.Name, Config: nil, Error: nil}
+				return
 			}
 
-			config := &leto.TrackingConfiguration{}
+			config := leto.TrackingConfiguration{}
 			err = yaml.Unmarshal([]byte(status.Experiment.YamlConfiguration), &config)
 
 			if err != nil {
@@ -60,7 +61,7 @@ func (c *MonitorCommand) getStatuses() (map[string]*leto.TrackingConfiguration, 
 				return
 			}
 
-			results <- Result{Instance: n.Name, Config: config, Error: nil}
+			results <- Result{Instance: n.Name, Config: &config, Error: nil}
 
 		}()
 	}
