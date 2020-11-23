@@ -21,6 +21,8 @@ type MonitorCommand struct {
 	currentStatuses map[string]*leto.TrackingConfiguration
 }
 
+var monitorCommand = &MonitorCommand{}
+
 func (c *MonitorCommand) getStatuses() (map[string]*leto.TrackingConfiguration, error) {
 	nodes, err := c.lister.ListNodes()
 	if err != nil {
@@ -121,5 +123,10 @@ func (c *MonitorCommand) Execute(args []string) error {
 
 		time.Sleep(REFRESH_DURATION)
 	}
+
+}
+
+func init() {
+	parser.AddCommand("monitor", "monitors (scarcefully) local network for leto instances", "Monitor every minute the status of nodes on the network and report terminated experiment on slack", monitorCommand)
 
 }
