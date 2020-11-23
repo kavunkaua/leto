@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -13,8 +16,7 @@ import (
 var REFRESH_DURATION = 1 * time.Minute
 
 type MonitorCommand struct {
-	SlackURL   string `long:"slack-url" description:"URL for the slack service" required:"true"`
-	SlackToken string `long:"slack-token" description:"Token for the slack service" required:"true"`
+	SlackURL string `long:"slack-url" description:"URL for the slack service" required:"true"`
 
 	lister *leto.NodeLister
 
@@ -110,18 +112,49 @@ func (c *MonitorCommand) buildEvents() ([]string, error) {
 	return events, nil
 }
 
+func encodeMessage(message string) (*bytes.Buffer, error) {
+	type SlackMessage struct {
+		Text string `json:"text"`
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(buffer)
+	if err := enc.Encode(SlackMessage{Text: message}); err != nil {
+		return nil, err
+	}
+	return buffer, nil
+}
+
+func (c *MonitorCommand) postToSlack(message string) error {
+	buffer, err := encodeMessage(message)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(c.SlackURL, "application/json", buffer)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Could not post to slack: got response %d: %s", resp.StatusCode, resp.Status)
+	}
+	return nil
+}
+
 func (c *MonitorCommand) Execute(args []string) error {
 	c.lister = leto.NewNodeLister()
 	c.currentStatuses = nil
 	for {
 		events, err := c.buildEvents()
 		if err != nil {
-			//TODO report an error
-			log.Printf("Could not build events: %s", err)
+			if err = c.postToSlack(fmt.Sprintf("[CRITICAL]: Could not build events: %s", err)); err != nil {
+				log.Printf("Could not post to slack: %s", err)
+			}
 		}
 		for _, e := range events {
-			//TODO publish events
-			log.Printf(e)
+			if err := c.postToSlack(e); err != nil {
+				log.Printf("Could not post to slack: %s", err)
+			}
 		}
 
 		time.Sleep(REFRESH_DURATION)
