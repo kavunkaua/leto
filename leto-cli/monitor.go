@@ -99,13 +99,13 @@ func (c *MonitorCommand) buildEvents() ([]string, error) {
 		newConfig, ok := newStatuses[nodeName]
 		if ok == false {
 			if config != nil {
-				events = append(events, fmt.Sprintf("[ERROR] Experiment '%s' on '%s' apparently ended unexpectedly", config.ExperimentName, nodeName))
+				events = append(events, fmt.Sprintf(":warning: Experiment `%s` on *%s* apparently ended unexpectedly", config.ExperimentName, nodeName))
 			}
 			continue
 		}
 
 		if newConfig == nil && config != nil {
-			events = append(events, fmt.Sprintf("[INFO] Experiment '%s' on '%s' ended hopefully gracefully", config.ExperimentName, nodeName))
+			events = append(events, fmt.Sprintf(":information_source: Experiment `%s` on *%s* ended hopefully gracefully", config.ExperimentName, nodeName))
 		}
 	}
 
