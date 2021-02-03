@@ -56,3 +56,9 @@ type Unlink struct {
 	Master string
 	Slave  string
 }
+
+type RegisterTrackerArgs struct {
+	Hostname       string
+	StreamServer   string
+	ExperimentName string
+}

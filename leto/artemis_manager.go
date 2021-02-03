@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -121,6 +122,8 @@ func (m *ArtemisManager) Start(userConfig *leto.TrackingConfiguration) error {
 
 	m.spawnTasks()
 
+	m.registerOlympus()
+
 	m.writePersistentFile()
 
 	return nil
@@ -135,6 +138,8 @@ func (m *ArtemisManager) Stop() error {
 	}
 
 	m.removePersistentFile()
+
+	m.unregisterOlympus()
 
 	if m.artemisCmd != nil {
 		if m.nodeConfig.IsMaster() == true {
@@ -942,4 +947,59 @@ func (m *ArtemisManager) LoadFromPersistentFile() {
 	if err != nil {
 		m.logger.Printf("Could not start experiment from '%s': %s", m.persitentFilePath(), err)
 	}
+}
+
+func (m *ArtemisManager) registerOlympus() {
+	if err := m.registerOlympusError(); err != nil {
+		m.logger.Printf("Could not register tracking to olympus: %s", err)
+	}
+}
+
+func (m *ArtemisManager) unregisterOlympus() {
+	if err := m.unregisterOlympusError(); err != nil {
+		m.logger.Printf("Could not unregister tracking to olympus: %s", err)
+	}
+}
+
+func (m *ArtemisManager) registerOlympusError() error {
+	olympusHost := m.experimentConfig.Stream.Host
+	if olympusHost == nil || len(*olympusHost) == 0 {
+		return nil
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	m.logger.Printf("registering tracking to %s", *olympusHost)
+	c, err := rpc.Dial("tcp", fmt.Sprintf("%s:%d", *olympusHost, 3001))
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	unused := 0
+	return c.Call("Olympus.RegisterTracker", leto.RegisterTrackerArgs{
+		Hostname:       hostname,
+		StreamServer:   *olympusHost,
+		ExperimentName: m.experimentConfig.ExperimentName,
+	}, &unused)
+}
+
+func (m *ArtemisManager) unregisterOlympusError() error {
+	olympusHost := m.experimentConfig.Stream.Host
+	if olympusHost == nil || len(*olympusHost) == 0 {
+		return nil
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	m.logger.Printf("unregistering tracking to %s", *olympusHost)
+	c, err := rpc.Dial("tcp", fmt.Sprintf("%s:%d", *olympusHost, 3001))
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	unused := 0
+	return c.Call("Olympus.UnregisterTracker", hostname, &unused)
 }
