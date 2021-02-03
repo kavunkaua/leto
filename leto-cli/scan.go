@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/atuleu/go-tablifier"
 	"github.com/formicidae-tracker/leto"
 	"gopkg.in/yaml.v2"
 )
@@ -27,6 +28,14 @@ func (r Result) running() int {
 		return 0
 	}
 	return 1
+}
+
+type ResultTableLine struct {
+	Node       string
+	Status     string
+	Experiment string
+	Since      string
+	Links      string
 }
 
 func (c *ScanCommand) Execute(args []string) error {
@@ -60,44 +69,46 @@ func (c *ScanCommand) Execute(args []string) error {
 		log.Printf("Could not fetch status: %s", err)
 	}
 
-	sortedStatus := []Result{}
+	lines := make([]ResultTableLine, 0, len(nodes))
+
+	now := time.Now()
+
 	for r := range statuses {
-		sortedStatus = append(sortedStatus, r)
-	}
-
-	sort.Slice(sortedStatus, func(i, j int) bool {
-		if sortedStatus[i].running() == sortedStatus[j].running() {
-			return sortedStatus[i].Instance < sortedStatus[j].Instance
+		line := ResultTableLine{
+			Node:       strings.TrimPrefix(r.Instance, "leto."),
+			Status:     "Idle",
+			Experiment: "N.A.",
+			Since:      "N.A.",
 		}
-		return sortedStatus[i].running() > sortedStatus[j].running()
-	})
-
-	formatStr := "%15s | %7s | %60s | %20s | %s\n"
-	fmt.Fprintf(os.Stdout, formatStr, "Instance", "Status", "Experiment", "Since", "Links")
-	fmt.Fprintf(os.Stdout, "------------------------------------------------------------------------------------------------------------------------\n")
-	for _, r := range sortedStatus {
-		s := "Idle"
-		exp := "N.A."
-		since := "N.A."
-		links := ""
 		if len(r.Status.Master) != 0 {
-			links = "↦ " + strings.TrimPrefix(r.Status.Master, "leto.")
+			line.Links = "↦ " + strings.TrimPrefix(r.Status.Master, "leto.")
 		} else if len(r.Status.Slaves) != 0 {
 			sep := "↤ "
 			for _, s := range r.Status.Slaves {
-				links += sep + strings.TrimPrefix(s, "leto.")
+				line.Links += sep + strings.TrimPrefix(s, "leto.")
 				sep = ",↤ "
 			}
 		}
 		if r.Status.Experiment != nil {
-			s = "Running"
+			line.Status = "Running"
 			config := leto.TrackingConfiguration{}
 			yaml.Unmarshal([]byte(r.Status.Experiment.YamlConfiguration), &config)
-			exp = config.ExperimentName
-			since = r.Status.Experiment.Since.Format("Mon Jan 2 15:04:05")
+			line.Experiment = config.ExperimentName
+			ellapsed := now.Sub(r.Status.Experiment.Since).Round(time.Second)
+			line.Since = fmt.Sprintf("%s", ellapsed)
 		}
-		fmt.Fprintf(os.Stdout, formatStr, r.Instance, s, exp, since, links)
+		lines = append(lines, line)
 	}
+
+	sort.Slice(lines, func(i, j int) bool {
+		if lines[i].Status == lines[j].Status {
+			return lines[i].Node < lines[j].Node
+		}
+		return lines[i].Status == "Running"
+	})
+
+	tablifier.Tablify(lines)
+
 	return nil
 }
 
