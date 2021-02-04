@@ -1,5 +1,5 @@
 VERSION := $(shell git describe)
-LDFLAGS :=-ldflags "-X 'leto.LETO_VERSION=$(VERSION)'"
+LDFLAGS :=-ldflags "-X 'github.com/formicidae-tracker/leto.LETO_VERSION=$(VERSION)'"
 
 all: check-main leto/leto leto-cli/leto-cli
 
