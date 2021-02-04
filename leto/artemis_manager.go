@@ -972,12 +972,14 @@ func (m *ArtemisManager) registerOlympusError() error {
 		return err
 	}
 	m.logger.Printf("registering tracking to %s", *olympusHost)
-	c, err := rpc.Dial("tcp", fmt.Sprintf("%s:%d", *olympusHost, 3001))
+	c, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", *olympusHost, 3001))
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 	unused := 0
+	m.logger.Printf("connected to %s", *olympusHost)
+
 	return c.Call("Olympus.RegisterTracker", leto.RegisterTrackerArgs{
 		Hostname:       hostname,
 		StreamServer:   *olympusHost,
@@ -995,7 +997,7 @@ func (m *ArtemisManager) unregisterOlympusError() error {
 		return err
 	}
 	m.logger.Printf("unregistering tracking to %s", *olympusHost)
-	c, err := rpc.Dial("tcp", fmt.Sprintf("%s:%d", *olympusHost, 3001))
+	c, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", *olympusHost, 3001))
 	if err != nil {
 		return err
 	}
