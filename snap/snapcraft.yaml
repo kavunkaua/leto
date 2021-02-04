@@ -1,0 +1,34 @@
+name: fort-leto-cli
+base: core20 # the base snap is the execution environment for this snap
+version: git
+summary: FORT leto command line utility
+description: |
+  fort-leto-cli install the `fort-leto-cli` command line utility, used to
+    scan, start and stop tracking experiment on leto nodes on the local network.
+grade: stable
+confinement: strict
+
+parts:
+  leto-cli:
+    # See 'snapcraft plugins'
+    plugin: go
+    source: .
+    source-type: local
+    override-build: |
+      go mod download
+      go install -p 2 -ldflags="-X 'github.com/formicidae-tracker/leto.LETO_VERSION=$(git describe)' -linkmode=external" ./...
+    prime:
+      - bin/leto-cli
+
+  leto-cli-completion:
+    plugin: dump
+    source: snap/local
+    source-type: local
+
+apps:
+  fort-leto-cli:
+    command: bin/leto-cli
+    plugs:
+      - home
+      - network
+    completer: fort-leto-cli.bash-completer
