@@ -93,6 +93,7 @@ experiment: test-configuration
 legacy-mode: false
 new-ant-roi: 600
 image-renew-period: 2h
+threads: 0
 stream:
   host: ""
   bitrate: 2000
