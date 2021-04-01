@@ -788,6 +788,10 @@ func (m *ArtemisManager) buildTrackingCommand() *exec.Cmd {
 	args = append(args, "--port", fmt.Sprintf("%d", leto.ARTEMIS_IN_PORT))
 	args = append(args, "--uuid", m.experimentConfig.Loads.SelfUUID)
 
+	if *m.experimentConfig.Threads > 0 {
+		args = append(args, "--number-threads", fmt.Sprintf("%d", *m.experimentConfig.Threads))
+	}
+
 	if *m.experimentConfig.LegacyMode == true {
 		args = append(args, "--legacy-mode")
 	}

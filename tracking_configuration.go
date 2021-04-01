@@ -186,6 +186,7 @@ type TrackingConfiguration struct {
 	Detection           TagDetectionConfiguration `yaml:"apriltag"`
 	Highlights          *[]int                    `yaml:"highlights"`
 	Loads               *LoadBalancing            `yaml:"load-balancing"`
+	Threads             *int                      `yaml:"threads"`
 }
 
 func RecommendedTrackingConfiguration() TrackingConfiguration {
@@ -197,10 +198,12 @@ func RecommendedTrackingConfiguration() TrackingConfiguration {
 		Camera:              RecommendedCameraConfiguration(),
 		Detection:           RecommendedDetectionConfig(),
 		Highlights:          &([]int{}),
+		Threads:             new(int),
 	}
 	*res.NewAntOutputROISize = 600
 	*res.NewAntRenewPeriod = 2 * time.Hour
 	*res.LegacyMode = false
+	*res.Threads = 0
 	return res
 }
 
