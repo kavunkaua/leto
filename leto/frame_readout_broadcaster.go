@@ -13,7 +13,7 @@ import (
 )
 
 func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout, idle time.Duration) error {
-	logger := log.New(os.Stderr, "[broadcast] ", log.LstdFlags)
+	logger := log.New(os.Stderr, "[broadcast] ", 0)
 	m := NewRemoteManager()
 
 	mx := sync.RWMutex{}
@@ -51,7 +51,7 @@ func BroadcastFrameReadout(address string, readouts <-chan *hermes.FrameReadout,
 	logger.Printf("Broadcasting on %s", address)
 	return m.Listen(address, func(c net.Conn) {
 		defer c.Close()
-		logger := log.New(os.Stderr, fmt.Sprintf("[broadcast/%s] ", c.RemoteAddr().String()), log.LstdFlags)
+		logger := log.New(os.Stderr, fmt.Sprintf("[broadcast/%s] ", c.RemoteAddr().String()), 0)
 
 		b := proto.NewBuffer(nil)
 		header := &hermes.Header{

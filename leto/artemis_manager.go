@@ -76,7 +76,7 @@ func NewArtemisManager() (*ArtemisManager, error) {
 
 	return &ArtemisManager{
 		nodeConfig: nodeConfig,
-		logger:     log.New(os.Stderr, "[artemis] ", log.LstdFlags),
+		logger:     log.New(os.Stderr, "[artemis] ", 0),
 	}, nil
 }
 
@@ -859,7 +859,7 @@ func (m *ArtemisManager) buildTrackingCommand() *exec.Cmd {
 func (m *ArtemisManager) onTrackerAccept() func(c net.Conn) {
 	return func(c net.Conn) {
 		errors := make(chan error)
-		logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s] ", c.RemoteAddr().String()), log.LstdFlags)
+		logger := log.New(os.Stderr, fmt.Sprintf("[artemis/%s] ", c.RemoteAddr().String()), 0)
 		logger.Printf("new connection from %s", c.RemoteAddr().String())
 		go func() {
 			for e := range errors {

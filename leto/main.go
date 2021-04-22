@@ -156,7 +156,7 @@ func Execute() error {
 
 	l.artemis.LoadFromPersistentFile()
 
-	l.logger = log.New(os.Stderr, "[rpc] ", log.LstdFlags)
+	l.logger = log.New(os.Stderr, "[rpc] ", 0)
 	rpcRouter := rpc.NewServer()
 	rpcRouter.Register(l)
 	rpcRouter.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)

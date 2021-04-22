@@ -115,7 +115,7 @@ func NewStreamManager(basedir string, fps float64, config leto.StreamConfigurati
 		quality:           *config.Quality,
 		tune:              *config.Tune,
 		period:            2 * time.Hour,
-		logger:            log.New(os.Stderr, "[stream] ", log.LstdFlags),
+		logger:            log.New(os.Stderr, "[stream] ", 0),
 	}
 	if err := res.Check(); err != nil {
 		return nil, err

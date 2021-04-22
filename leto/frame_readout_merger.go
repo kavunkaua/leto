@@ -143,7 +143,7 @@ func MergeFrameReadout(wb *WorkloadBalance, inbound <-chan *hermes.FrameReadout,
 	betweenFrame := time.Duration(1.0e9/wb.FPS) * time.Nanosecond
 	timeout := time.Duration(2*wb.Stride+2) * betweenFrame
 
-	logger := log.New(os.Stderr, "[FrameReadoutMerger] ", log.LstdFlags)
+	logger := log.New(os.Stderr, "[FrameReadoutMerger] ", 0)
 	for {
 		var timer *time.Timer = nil
 		var timeoutC <-chan time.Time = nil
