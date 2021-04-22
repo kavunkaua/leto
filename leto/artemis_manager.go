@@ -953,16 +953,25 @@ func (m *ArtemisManager) LoadFromPersistentFile() {
 	}
 }
 
-func (m *ArtemisManager) registerOlympus() {
-	if err := m.registerOlympusError(); err != nil {
-		m.logger.Printf("Could not register tracking to olympus: %s", err)
+func (m *ArtemisManager) timeoutGuard(f func() error, errPrefix string, d time.Duration) {
+	errors := make(chan error, 1)
+	go func() { errors <- f() }()
+	select {
+	case err := <-errors:
+		if err != nil {
+			m.logger.Printf("%s: %s", errPrefix, err)
+		}
+	case <-time.After(5 * time.Second):
+		m.logger.Printf("%s: TIMEOUTED", errPrefix)
 	}
 }
 
+func (m *ArtemisManager) registerOlympus() {
+	m.timeoutGuard(m.registerOlympusError, "Could not register tracking to olympus: %s", 5*time.Second)
+}
+
 func (m *ArtemisManager) unregisterOlympus() {
-	if err := m.unregisterOlympusError(); err != nil {
-		m.logger.Printf("Could not unregister tracking to olympus: %s", err)
-	}
+	m.timeoutGuard(m.unregisterOlympusError, "Could not unregister tracking to olympus: %s", 5*time.Second)
 }
 
 func (m *ArtemisManager) registerOlympusError() error {
