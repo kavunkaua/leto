@@ -792,6 +792,11 @@ func (m *ArtemisManager) buildTrackingCommand() *exec.Cmd {
 		args = append(args, "--number-threads", fmt.Sprintf("%d", *m.experimentConfig.Threads))
 	}
 
+	if len(*m.experimentConfig.Camera.InputFrames) != 0 {
+
+		args = append(args, "--input-frames", fmt.Sprintf("%s", *m.experimentConfig.Camera.InputFrames))
+	}
+
 	if *m.experimentConfig.LegacyMode == true {
 		args = append(args, "--legacy-mode")
 	}
@@ -849,6 +854,10 @@ func (m *ArtemisManager) buildTrackingCommand() *exec.Cmd {
 	if len(tags) != 0 {
 		args = append(args, "--highlight-tags", strings.Join(tags, ","))
 	}
+
+	////////////////////////////////////////////////
+	m.logger.Printf("args %s", args)
+	///////////////////////////////////////////////
 
 	cmd := exec.Command("artemis", args...)
 	cmd.Stderr = nil

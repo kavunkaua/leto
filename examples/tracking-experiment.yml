@@ -34,6 +34,9 @@ camera:
   # duration of the IR flash, larger means more light but more motion
   # blur.
   strobe-duration: 1500us
+  # using locally stored frames
+  input-frames: frame_\*.bmp
+
 
 # Apriltag detection settings. For more information refers to apriltag
 # implementation

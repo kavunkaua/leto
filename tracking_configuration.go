@@ -121,6 +121,7 @@ type CameraConfiguration struct {
 	StrobeDuration *time.Duration `long:"strobe-duration" description:"duration of the strobe signal (recommended:1500us)" yaml:"strobe-duration"`
 	FPS            *float64       `short:"f" long:"fps" description:"FPS to use for the experiment (recommended:8.0)" yaml:"fps"`
 	StubPaths      *[]string      `long:"stub-image-paths" yaml:"stub-image-paths"`
+	InputFrames    *string        `long:"input-frames" description:"using locally stored frames" yaml:"input-frames"`
 }
 
 func RecommendedCameraConfiguration() CameraConfiguration {
@@ -129,11 +130,13 @@ func RecommendedCameraConfiguration() CameraConfiguration {
 		StrobeDuration: new(time.Duration),
 		FPS:            new(float64),
 		StubPaths:      new([]string),
+		InputFrames:    new(string),
 	}
 	*res.StrobeDelay = 0
 	*res.StrobeDuration = 1500 * time.Microsecond
 	*res.FPS = 8.0
 	*res.StubPaths = []string{}
+	*res.InputFrames = ""
 	return res
 }
 
@@ -235,11 +238,13 @@ func CheckNoNilField(v reflect.Value) error {
 	}
 	for i := 0; i < v.Type().NumField(); i++ {
 		f := v.Field(i)
+
 		if f.Type().Kind() == reflect.Struct {
 			if err := CheckNoNilField(f); err != nil {
 				return err
 			}
 		}
+
 		if f.Type().Kind() == reflect.Ptr {
 			if f.IsNil() {
 				return fmt.Errorf("field '%s' is nil", v.Type().Field(i).Name)
