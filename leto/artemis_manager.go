@@ -797,6 +797,11 @@ func (m *ArtemisManager) buildTrackingCommand() *exec.Cmd {
 		args = append(args, "--input-frames", fmt.Sprintf("%s", *m.experimentConfig.Camera.InputFrames))
 	}
 
+	if len(*m.experimentConfig.Camera.InputVideo) != 0 {
+
+		args = append(args, "--input-video", fmt.Sprintf("%s", *m.experimentConfig.Camera.InputVideo))
+	}
+
 	if *m.experimentConfig.LegacyMode == true {
 		args = append(args, "--legacy-mode")
 	}

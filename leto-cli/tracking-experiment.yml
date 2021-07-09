@@ -1,0 +1,114 @@
+# The configuration file are incrementally merged. The tracking system
+# will always have sensible default hardcoded and defined by site
+# administrator. If you want to use the site default, you simply do
+# not need to specify anything and comment the line
+#
+#
+
+# The name of the experiment if it is empty the tracking will be set
+# in test mode, no data will be saved
+experiment:
+
+# the legacy mode makes artemis mark frame using a frame number
+# overlay and catalogs ants like the legacy tracking system: one frame
+# if a new tag is found.
+legacy-mode: false
+
+
+# When a new tag is found a PNG centered on that tag is created,
+# cataloguing every tags seen.
+new-ant-roi: 600
+
+# The process of saving new discovered tag is reset after a defined
+# period. Too small period will produce a lot of data
+image-renew-period: 2h
+
+# Camera illumination settings
+camera:
+  # fps to run the experiment
+  fps: 8.0
+  # delay of the illumination relatively to the camera trigger
+  strobe-delay: 0us
+  # duration of the IR flash, larger means more light but more motion
+  # blur.
+  strobe-duration: 1500us
+  # using locally stored frames
+  #input-frames: /home/serhii/VSCProjects/sources/100testimages/t10_smallpopu_*.bmp
+  # using locally stored video (to do this, comment out the line above "input-frames: ...")
+  input-video: /home/serhii/VSCProjects/sources/Raw_video_for_example.avi
+# Apriltag detection settings. For more information refers to apriltag
+# implementation
+
+apriltag:
+  # family to use. Most user will have to change it
+  family: 16h5
+  # image quad detection section
+  quad:
+    # The only main setting that need to be tuned. When looking for
+    # quad in the image, the detector looks for black/white frontier,
+    # with a local difference higher than this value. Decreasing this
+    # value would cause more quads to be detected, but it would take a
+    # larger computation time to remove quads that aren't tags.
+    min-black-white-diff: 50
+
+    # quad decimation. could be 1 1.5 or 2. Increasing it will makes
+    # the detection faster, but you may miss a lot of tags, and you
+    # will loose a lot of position precision. Unless very rare cases, leave it to 1.
+    # decimate: 1.0
+
+    # Adds a gaussian blur to the image before processing. Lots of
+    # processor overhead, and mostly never needed in the tracking
+    # system. ).0 disables it and is a strongly encouraged setting
+    # sigma: 0.0
+
+    # Refines the edge position once a quad is detected. Since we have
+    # a lot of tags, it has a huge overhead. It is not recommended to
+    # enable it
+    # refine-edges: false
+
+    # Minimum number of grouped pixel that a require to start fitting
+    # a quad. Increasing it will makes the quad detection steps
+    # faster, but if increased too much, some tags will not be
+    # detected.
+    # min-cluster-pixel: 25
+
+    # Increasing this value may increase the number of weird squeezed
+    # tag detected, but with a huge overhead. Not recommended to
+    # temper with.
+    # max-n-maxima: 10
+
+    # Rejects tag whose  corner angle are smaller than  this value (or
+    # larger than pi minus this value)
+    # critical-angle-radian: 0.17453
+
+    # How much a border of a square can be not considered perfectly
+    # straight. Use with caution.
+    # max-line-mean-square-error: 10
+
+
+    # Quad deglitch euristic. Recommended not to enable.
+    deglitch: false
+
+
+# streaming / movie archiving section. Usually this section is already
+# configured by the site administrator and should require little to no
+# tuning. Tempering with value may increase a lot local disk usage.
+stream:
+
+
+
+#  host to stream to. If none is specified, artemis won't try to
+#  connect to a stream server. In most site where a stream server
+# is available (lausanne/bristol) this value is already sets and
+# do not need to be changed manually
+#  host:
+
+#  Constant bit-rate encoding of data
+#  constant-bit-rate: 2000
+
+#  libx264 compression preset
+#  quality: fast
+
+#  libx264 preset tuning
+#  tuning: film
+#

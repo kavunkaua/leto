@@ -122,6 +122,7 @@ type CameraConfiguration struct {
 	FPS            *float64       `short:"f" long:"fps" description:"FPS to use for the experiment (recommended:8.0)" yaml:"fps"`
 	StubPaths      *[]string      `long:"stub-image-paths" yaml:"stub-image-paths"`
 	InputFrames    *string        `long:"input-frames" description:"using locally stored frames" yaml:"input-frames"`
+	InputVideo     *string        `long:"input-video" description:"using locally stored video" yaml:"input-video"`
 }
 
 func RecommendedCameraConfiguration() CameraConfiguration {
@@ -131,12 +132,14 @@ func RecommendedCameraConfiguration() CameraConfiguration {
 		FPS:            new(float64),
 		StubPaths:      new([]string),
 		InputFrames:    new(string),
+		InputVideo:     new(string),
 	}
 	*res.StrobeDelay = 0
 	*res.StrobeDuration = 1500 * time.Microsecond
 	*res.FPS = 8.0
 	*res.StubPaths = []string{}
 	*res.InputFrames = ""
+	*res.InputVideo = ""
 	return res
 }
 

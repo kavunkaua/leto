@@ -104,7 +104,8 @@ camera:
   fps: 8.0
   strobe-delay: 0us
   strobe-duration: 1500us
-  input-frames: frame_\*.bmp
+  input-frames: frame_*.bmp
+  input-video: video.avi
   stub-image-paths:
     - foo.png
     - bar.png
