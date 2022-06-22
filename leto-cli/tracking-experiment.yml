@@ -33,15 +33,15 @@ camera:
   # blur.
   strobe-duration: 1500us
   # using locally stored frames
-  #input-frames: /home/serhii/VSCProjects/sources/100testimages/t10_smallpopu_*.bmp
+  input-frames: /home/serhii/VSCProjects/sources/ARTags_test_images_210709/cropped_8837-9442/frame.*.png
   # using locally stored video (to do this, comment out the line above "input-frames: ...")
-  input-video: /home/serhii/VSCProjects/sources/Raw_video_for_example.avi
+  #input-video: /home/serhii/VSCProjects/sources/Raw_video_for_example.avi
 # Apriltag detection settings. For more information refers to apriltag
 # implementation
 
 apriltag:
   # family to use. Most user will have to change it
-  family: 16h5
+  family: 36ARTag
   # image quad detection section
   quad:
     # The only main setting that need to be tuned. When looking for
