@@ -802,6 +802,27 @@ func (m *ArtemisManager) buildTrackingCommand() *exec.Cmd {
 		args = append(args, "--input-video", fmt.Sprintf("%s", *m.experimentConfig.Camera.InputVideo))
 	}
 
+	if len(*m.experimentConfig.Camera.CameraID) != 0 {
+
+		args = append(args, "--camera-id", fmt.Sprintf("%s", *m.experimentConfig.Camera.CameraID))
+	}
+
+	if len(*m.experimentConfig.Camera.TriggerMode) != 0 {
+		args = append(args, "--trigger-mode", fmt.Sprintf("%s", *m.experimentConfig.Camera.TriggerMode))
+	}
+
+	if len(*m.experimentConfig.Camera.RenderingHeight) != 0 {
+		args = append(args, "--rendering-height", fmt.Sprintf("%s", *m.experimentConfig.Camera.RenderingHeight))
+	}
+
+	if len(*m.experimentConfig.Camera.VideoOutputToFile) != 0 {
+		args = append(args, "--video-output-to-file", fmt.Sprintf("%s", *m.experimentConfig.Camera.VideoOutputToFile))
+	}
+
+	if len(*m.experimentConfig.TrackingModel) != 0 {
+		args = append(args, "--at-tracking-model", fmt.Sprintf("%s", *m.experimentConfig.TrackingModel))
+	}
+
 	if *m.experimentConfig.LegacyMode == true {
 		args = append(args, "--legacy-mode")
 	}

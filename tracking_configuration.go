@@ -123,6 +123,10 @@ type CameraConfiguration struct {
 	StubPaths      *[]string      `long:"stub-image-paths" yaml:"stub-image-paths"`
 	InputFrames    *string        `long:"input-frames" description:"using locally stored frames" yaml:"input-frames"`
 	InputVideo     *string        `long:"input-video" description:"using locally stored video" yaml:"input-video"`
+	CameraID	   *string        `long:"camera-id" description:"using specific camera" yaml:"camera-id"`
+	TriggerMode	   *string        `long:"trigger-mode" description:"using trigger mode" yaml:"trigger-mode"`
+	RenderingHeight *string		  `long:"rendering-height" description:"setting frame resolution" yaml:"rendering-height"`
+	VideoOutputToFile *string	  `long:"video-output-to-file" description:"save video stream to file" yaml:"video-output-to-file"`
 }
 
 func RecommendedCameraConfiguration() CameraConfiguration {
@@ -133,6 +137,10 @@ func RecommendedCameraConfiguration() CameraConfiguration {
 		StubPaths:      new([]string),
 		InputFrames:    new(string),
 		InputVideo:     new(string),
+		CameraID:     	new(string),
+		TriggerMode:	new(string),
+		RenderingHeight: new(string),
+		VideoOutputToFile: new(string),
 	}
 	*res.StrobeDelay = 0
 	*res.StrobeDuration = 1500 * time.Microsecond
@@ -140,6 +148,10 @@ func RecommendedCameraConfiguration() CameraConfiguration {
 	*res.StubPaths = []string{}
 	*res.InputFrames = ""
 	*res.InputVideo = ""
+	*res.CameraID = ""
+	*res.TriggerMode = ""
+	*res.RenderingHeight = ""
+	*res.VideoOutputToFile = ""
 	return res
 }
 
@@ -192,7 +204,8 @@ type TrackingConfiguration struct {
 	Detection           TagDetectionConfiguration `yaml:"apriltag"`
 	Highlights          *[]int                    `yaml:"highlights"`
 	Loads               *LoadBalancing            `yaml:"load-balancing"`
-	Threads             *int                      `yaml:"threads"`
+	Threads             *int                      `yaml:"threads"`		
+	TrackingModel  		*string        			  `long:"at-tracking-model" description:"using markerless tracking" yaml:"at-tracking-model"`
 }
 
 func RecommendedTrackingConfiguration() TrackingConfiguration {
@@ -205,11 +218,13 @@ func RecommendedTrackingConfiguration() TrackingConfiguration {
 		Detection:           RecommendedDetectionConfig(),
 		Highlights:          &([]int{}),
 		Threads:             new(int),
+		TrackingModel:		 new(string),
 	}
 	*res.NewAntOutputROISize = 600
 	*res.NewAntRenewPeriod = 2 * time.Hour
 	*res.LegacyMode = false
 	*res.Threads = 0
+	*res.TrackingModel = ""
 	return res
 }
 

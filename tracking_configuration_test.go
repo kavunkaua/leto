@@ -106,6 +106,7 @@ camera:
   strobe-duration: 1500us
   input-frames: frame_*.bmp
   input-video: video.avi
+  camera-id: 0
   stub-image-paths:
     - foo.png
     - bar.png
